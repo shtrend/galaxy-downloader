@@ -9,41 +9,55 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog'
-import type { Locale } from '@/lib/i18n/config'
-import type { Dictionary } from '@/lib/i18n/types'
+import { ScrollText } from 'lucide-react'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import changelogData from '@/lib/changelog.json'
+import { useAppLocale, useDictionary } from '@/i18n/client'
+import { cn } from '@/lib/utils'
 
 interface ChangelogDialogProps {
-    locale: Locale
-    dict: Dictionary
+    triggerClassName?: string
+    triggerIconOnly?: boolean
+    defaultOpen?: boolean
+    onTriggerClick?: () => void
 }
 
-export function ChangelogDialog({ locale, dict }: ChangelogDialogProps) {
-    const [open, setOpen] = useState(false)
+export function ChangelogDialog({
+    triggerClassName,
+    triggerIconOnly = false,
+    defaultOpen = false,
+    onTriggerClick,
+}: ChangelogDialogProps) {
+    const locale = useAppLocale()
+    const dict = useDictionary()
+    const [open, setOpen] = useState(defaultOpen)
 
     // 获取当前语言的更新内容，如果没有则回退到英文
     const getChanges = (changes: Record<string, string[]>) => {
         return changes[locale] || changes['en'] || []
     }
 
-    const title = dict.changelog?.title || '更新日志'
+    const title = dict.changelog.title
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button
                     variant="ghost"
-                    size="sm"
-                    className="text-sm"
+                    size={triggerIconOnly ? 'icon' : 'sm'}
+                    className={cn('text-sm', triggerClassName)}
+                    onClick={onTriggerClick}
+                    aria-label={title}
                 >
-                    {title}
+                    <ScrollText className={cn('h-4 w-4', !triggerIconOnly && 'mr-1')} />
+                    {triggerIconOnly ? <span className="sr-only">{title}</span> : title}
                 </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
                 </DialogHeader>
-                <div className="max-h-[60vh] overflow-y-auto pr-2">
+                <ScrollArea className="max-h-[60vh] pr-2">
                     <div className="space-y-6">
                         {changelogData.versions.map((version) => (
                             <div key={version.version} className="border-b border-border pb-4 last:border-b-0 last:pb-0">
@@ -62,7 +76,7 @@ export function ChangelogDialog({ locale, dict }: ChangelogDialogProps) {
                             </div>
                         ))}
                     </div>
-                </div>
+                </ScrollArea>
             </DialogContent>
         </Dialog>
     )

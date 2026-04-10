@@ -1,5 +1,12 @@
 import type { Locale } from '@/lib/i18n/config'
 import type { Dictionary } from '@/lib/i18n/types'
+import {
+    SITE_URL,
+    buildLocaleUrl,
+    localeToHtmlLang,
+    resolveSiteAlternateName,
+    sanitizeStructuredDataTextList,
+} from '@/lib/seo'
 
 interface StructuredDataProps {
     locale: Locale
@@ -7,22 +14,18 @@ interface StructuredDataProps {
 }
 
 export function StructuredData({ locale, dict }: StructuredDataProps) {
+    const localeUrl = buildLocaleUrl(locale)
+    const seoLocale: keyof Dictionary['seo']['features'] = locale
+    const featureList = sanitizeStructuredDataTextList(dict.seo.features[seoLocale])
+
     const websiteSchema = {
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": dict.metadata.siteName,
-        "alternateName": locale === 'en' ? "Universal Media Downloader" : "通用媒体下载器",
+        "alternateName": resolveSiteAlternateName(locale),
         "description": dict.metadata.description,
-        "url": `https://downloader.bhwa233.com/${locale}`,
-        "inLanguage": locale === 'zh' ? 'zh-CN' : locale === 'zh-tw' ? 'zh-TW' : 'en-US',
-        "potentialAction": {
-            "@type": "SearchAction",
-            "target": {
-                "@type": "EntryPoint",
-                "urlTemplate": `https://downloader.bhwa233.com/${locale}`
-            },
-            "query-input": "required name=search_term_string"
-        },
+        "url": localeUrl,
+        "inLanguage": localeToHtmlLang(locale),
         "creator": {
             "@type": "Organization",
             "name": dict.metadata.siteName
@@ -38,54 +41,35 @@ export function StructuredData({ locale, dict }: StructuredDataProps) {
         "@type": "WebApplication",
         "name": dict.metadata.siteName,
         "description": dict.metadata.description,
-        "url": `https://downloader.bhwa233.com/${locale}`,
+        "url": localeUrl,
         "applicationCategory": "UtilitiesApplication",
         "operatingSystem": "Any",
-        "permissions": "browser",
+        "browserRequirements": "Requires JavaScript and a modern web browser.",
         "offers": {
             "@type": "Offer",
             "price": "0",
             "priceCurrency": "USD"
         },
-        "featureList": locale === 'en' ? dict.seo.features.en : dict.seo.features.zh
+        "featureList": featureList
     }
 
-    // FAQ Schema
-    const faqSchema = {
+    const organizationSchema = {
         "@context": "https://schema.org",
-        "@type": "FAQPage",
-        "mainEntity": locale === 'en' ? dict.seo.faq.en.map(item => ({
-            "@type": "Question",
-            "name": item.question,
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": item.answer
-            }
-        })) : dict.seo.faq.zh.map(item => ({
-            "@type": "Question",
-            "name": item.question,
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": item.answer
-            }
-        }))
-    }
-
-    // HowTo Schema
-    const howToSchema = {
-        "@context": "https://schema.org",
-        "@type": "HowTo",
-        "name": locale === 'en' ? dict.seo.howTo.title.en : dict.seo.howTo.title.zh,
-        "description": dict.metadata.description,
-        "step": locale === 'en' ? dict.seo.howTo.steps.en.map(step => ({
-            "@type": "HowToStep",
-            "name": step.name,
-            "text": step.text
-        })) : dict.seo.howTo.steps.zh.map(step => ({
-            "@type": "HowToStep",
-            "name": step.name,
-            "text": step.text
-        }))
+        "@type": "Organization",
+        "name": dict.metadata.siteName,
+        "url": SITE_URL,
+        "logo": `${SITE_URL}/icons/icon-512x512.png`,
+        "sameAs": [
+            "https://github.com/lxw15337674/bilibili-audio-downloader",
+        ],
+        "contactPoint": [
+            {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "url": `${localeUrl}/contact`,
+                "availableLanguage": [localeToHtmlLang(locale)],
+            },
+        ],
     }
 
     return (
@@ -105,15 +89,9 @@ export function StructuredData({ locale, dict }: StructuredDataProps) {
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
-                    __html: JSON.stringify(faqSchema)
-                }}
-            />
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{
-                    __html: JSON.stringify(howToSchema)
+                    __html: JSON.stringify(organizationSchema)
                 }}
             />
         </>
     )
-} 
+}

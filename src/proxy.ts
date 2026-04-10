@@ -1,73 +1,61 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { match } from '@formatjs/intl-localematcher'
-import Negotiator from 'negotiator'
 import { i18n } from './lib/i18n/config'
+import {
+    LOCALE_REDIRECT_VARY_HEADERS,
+    isBotUserAgent,
+    normalizeCookieLocale,
+    resolveLocaleForRequest,
+} from './lib/seo-routing'
+import { appendVaryHeader } from './lib/seo'
+import { LOCALE_COOKIE_NAME, LOCALE_COOKIE_MAX_AGE } from './lib/constants'
 
-// Accept-Language 到 locale 的映射
-const localeMapping: Record<string, string> = {
-    'zh-TW': 'zh-tw',
-    'zh-HK': 'zh-tw',
-    'zh-MO': 'zh-tw',
-    'zh-Hant': 'zh-tw',
-    'zh-Hant-TW': 'zh-tw',
-    'zh-Hant-HK': 'zh-tw',
-    'zh-Hant-MO': 'zh-tw',
-    'zh-CN': 'zh',
-    'zh-Hans': 'zh',
-    'zh-Hans-CN': 'zh',
-    'zh': 'zh', // 默认简体
-}
+const ACCEPT_LANGUAGE_CACHE_LIMIT = 64
+const acceptLanguageCache = new Map<string, string[]>()
 
 function getLocaleFromCookie(request: NextRequest): string | null {
-    const cookieLocale = request.cookies.get('preferred-locale')?.value
-    return cookieLocale && i18n.locales.includes(cookieLocale as (typeof i18n.locales)[number]) ? cookieLocale : null
+    const cookieLocale = request.cookies.get(LOCALE_COOKIE_NAME)?.value
+    return normalizeCookieLocale(cookieLocale ?? null, i18n.locales)
 }
 
-function getLocaleFromAcceptLanguage(request: NextRequest): string {
-    const negotiatorHeaders: Record<string, string> = {}
-    request.headers.forEach((value, key) => (negotiatorHeaders[key] = value))
+function getAcceptedLanguages(request: NextRequest): string[] {
+    const header = request.headers.get('accept-language')
+    if (!header) {
+        return []
+    }
 
-    const languages = new Negotiator({ headers: negotiatorHeaders }).languages()
+    const cached = acceptLanguageCache.get(header)
+    if (cached) {
+        return cached
+    }
 
-    // 先尝试精确匹配
-    for (const lang of languages) {
-        if (localeMapping[lang]) {
-            return localeMapping[lang]
+    const parsed = header
+        .split(',')
+        .map((part) => {
+            const [tagPart, qualityPart] = part.trim().split(';q=')
+            const tag = tagPart.trim()
+            const quality = qualityPart ? Number.parseFloat(qualityPart) : 1
+            return { tag, quality: Number.isFinite(quality) ? quality : 0 }
+        })
+        .filter((item) => item.tag.length > 0)
+        .sort((a, b) => b.quality - a.quality)
+        .map((item) => item.tag)
+
+    if (acceptLanguageCache.size >= ACCEPT_LANGUAGE_CACHE_LIMIT) {
+        const oldestKey = acceptLanguageCache.keys().next().value
+        if (oldestKey) {
+            acceptLanguageCache.delete(oldestKey)
         }
     }
+    acceptLanguageCache.set(header, parsed)
 
-    // 再尝试使用 intl-localematcher
-    try {
-        return match(languages, i18n.locales, i18n.defaultLocale)
-    } catch {
-        return i18n.defaultLocale
-    }
-}
-
-function getLocale(request: NextRequest): string {
-    // 首先检查 URL 中是否已有语言前缀
-    const pathname = request.nextUrl.pathname
-    const pathnameHasLocale = i18n.locales.some(
-        (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
-    )
-
-    if (pathnameHasLocale) {
-        return pathname.split('/')[1]
-    }
-
-    // 检查 Cookie 中的语言偏好
-    const cookieLocale = getLocaleFromCookie(request)
-    if (cookieLocale) {
-        return cookieLocale
-    }
-
-    // 从 Accept-Language header 获取首选语言
-    return getLocaleFromAcceptLanguage(request)
+    return parsed
 }
 
 export function proxy(request: NextRequest) {
     const pathname = request.nextUrl.pathname
+    const userAgent = request.headers.get('user-agent') || ''
+    const cookieLocale = getLocaleFromCookie(request)
 
     // 跳过 API 路由和静态文件
     if (
@@ -75,7 +63,7 @@ export function proxy(request: NextRequest) {
         pathname.startsWith('/_next/') ||
         pathname.includes('.')
     ) {
-        return
+        return NextResponse.next()
     }
 
     // 检查路径名中是否有任何支持的区域设置
@@ -83,19 +71,29 @@ export function proxy(request: NextRequest) {
         (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
     )
 
-    if (pathnameHasLocale) return
+    if (pathnameHasLocale) {
+        return NextResponse.next()
+    }
 
     // 如果没有区域设置则重定向
-    const locale = getLocale(request)
+    const locale = resolveLocaleForRequest({
+        pathname,
+        userAgent,
+        cookieLocale,
+        acceptLanguages: getAcceptedLanguages(request),
+        locales: i18n.locales,
+        defaultLocale: i18n.defaultLocale,
+    })
     request.nextUrl.pathname = `/${locale}${pathname}`
 
     const response = NextResponse.redirect(request.nextUrl)
+    appendVaryHeader(response.headers, [...LOCALE_REDIRECT_VARY_HEADERS])
 
-    // 设置 Cookie 记住用户语言偏好（仅在基于浏览器检测时设置）
-    if (!getLocaleFromCookie(request)) {
-        response.cookies.set('preferred-locale', locale, {
+    // 设置 Cookie 记住用户语言偏好（仅在真实用户请求且非已有 cookie 时设置）
+    if (!isBotUserAgent(userAgent) && !cookieLocale) {
+        response.cookies.set(LOCALE_COOKIE_NAME, locale, {
             path: '/',
-            maxAge: 31536000, // 1年
+            maxAge: LOCALE_COOKIE_MAX_AGE,
             sameSite: 'lax',
             secure: process.env.NODE_ENV === 'production'
         })
@@ -104,12 +102,11 @@ export function proxy(request: NextRequest) {
     return response
 }
 
+export default proxy
+
 export const config = {
     matcher: [
-        // 匹配所有路径除了以下情况：
-        // - api 路由
-        // - _next 静态文件
-        // - 包含点的文件 (如 .ico, .png 等)
-        '/((?!api|_next/static|_next/image|favicon.ico|.*\\.).*)',
+        // 仅匹配“无 locale 前缀”的页面请求，减少中间件对已本地化路由的额外开销
+        '/((?!api|_next/static|_next/image|favicon.ico|.*\\.|(?:zh|zh-tw|en|ja)(?:/|$)).*)',
     ],
 } 

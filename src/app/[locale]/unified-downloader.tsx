@@ -1,87 +1,159 @@
 'use client';
 
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { startTransition, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import dynamic from 'next/dynamic';
+import { useSearchParams } from 'next/navigation';
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
-import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
-import axios from 'axios';
-import type { Dictionary } from '@/lib/i18n/types';
-import type { Locale } from "@/lib/i18n/config";
-import { LanguageSwitcher } from "@/components/language-switcher";
-import { API_ENDPOINTS } from '@/lib/config';
+import { toast } from '@/lib/deferred-toast';
+import { DeferredAudioExtractDialog } from '@/components/deferred-audio-extract-dialog';
+import type { AudioExtractTask } from '@/components/audio-tool/types';
+import { Loader2, Link2 } from 'lucide-react';
+import { AppTopBar } from '@/components/layout/app-top-bar';
 
-import { DownloadHistory, type DownloadRecord } from './download-history';
-import { ResultCard } from '@/components/downloader/ResultCard';
-import { QuickStartCard } from '@/components/downloader/QuickStartCard';
-import { PlatformGuideCard } from '@/components/downloader/PlatformGuideCard';
-import { FreeSupportCard } from '@/components/downloader/FreeSupportCard';
-import { ChangelogDialog } from '@/components/changelog-dialog';
-import { useLocalStorageState } from 'ahooks';
+import type { DownloadRecord } from './download-history';
+import { useLocalStorageState } from '@/hooks/use-local-storage-state';
+import { useInstallPrompt } from '@/hooks/use-install-prompt';
 import type { UnifiedParseResult } from '@/lib/types';
 import { Platform } from '@/lib/types';
 import { DOWNLOAD_HISTORY_MAX_COUNT, DOWNLOAD_HISTORY_STORAGE_KEY } from '@/lib/constants';
+import { useDictionary } from '@/i18n/client';
+import { isApiRequestError, resolveApiErrorMessage } from '@/lib/api-errors';
+import { getPlatformLabel, normalizePlatform } from '@/lib/platforms';
+import { requestUnifiedParse } from '@/lib/unified-parse';
+
+const UnifiedDownloaderLowerSections = dynamic(
+    () => import('./unified-downloader-lower-sections').then((m) => m.UnifiedDownloaderLowerSections),
+    { ssr: false }
+);
 
 interface UnifiedDownloaderProps {
-    dict: Dictionary;
-    locale: Locale;
+    leftRail?: ReactNode;
+    rightRail?: ReactNode;
+    mobileAd?: ReactNode;
+    mobileGuides?: ReactNode;
+    heroMeta?: ReactNode;
+    footer?: ReactNode;
 }
 
-export function UnifiedDownloader({ dict, locale }: UnifiedDownloaderProps) {
+function resolveSharePlaybackUrl(result: UnifiedParseResult['data'] | null): string | null {
+    const sourceUrl = typeof result?.url === 'string' ? result.url.trim() : '';
+    if (!sourceUrl) {
+        return null;
+    }
+
+    return `/api/play?url=${encodeURIComponent(sourceUrl)}`;
+}
+
+export function UnifiedDownloader({
+    leftRail,
+    rightRail,
+    mobileAd,
+    mobileGuides,
+    heroMeta,
+    footer,
+}: UnifiedDownloaderProps) {
+    const dict = useDictionary()
+    const searchParams = useSearchParams();
     const [url, setUrl] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [audioToolMounted, setAudioToolMounted] = useState(false);
+    const [audioToolOpen, setAudioToolOpen] = useState(false);
+    const [audioToolEntry, setAudioToolEntry] = useState<'toolbar' | 'result'>('toolbar');
+    const [audioToolTask, setAudioToolTask] = useState<AudioExtractTask | null>(null);
     const [parseResult, setParseResult] = useState<UnifiedParseResult['data'] | null>(null);
+    const [sharePlaybackEnabled, setSharePlaybackEnabled] = useState(false);
+    const historyRef = useRef<HTMLDivElement>(null);
+    const urlInputRef = useRef<HTMLTextAreaElement>(null);
+    const handledShareTaskRef = useRef<string | null>(null);
 
-    const [downloadHistory, setDownloadHistory] = useLocalStorageState<DownloadRecord[]>(DOWNLOAD_HISTORY_STORAGE_KEY, {
+    const [downloadHistory, setDownloadHistory, historyHydrated] = useLocalStorageState<DownloadRecord[]>(DOWNLOAD_HISTORY_STORAGE_KEY, {
         defaultValue: []
     });
-    const addToHistory = (record: DownloadRecord) => {
-        setDownloadHistory(prev => [record, ...(prev || []).slice(0, DOWNLOAD_HISTORY_MAX_COUNT - 1)]);
-    };
+    const { canPrompt, promptInstall, dismiss } = useInstallPrompt();
+    const hasPromptedInstall = useRef(false);
+    const addToHistory = useCallback((record: DownloadRecord) => {
+        const normalizedUrl = record.url.trim();
+        setDownloadHistory(prev => [
+            record,
+            ...(prev || []).filter((item) => item.url.trim() !== normalizedUrl)
+        ].slice(0, DOWNLOAD_HISTORY_MAX_COUNT));
+    }, [setDownloadHistory]);
 
     const clearDownloadHistory = () => {
         setDownloadHistory([]);
     };
 
+    const openToolbarAudioTool = () => {
+        setAudioToolMounted(true);
+        setAudioToolEntry('toolbar');
+        setAudioToolTask(null);
+        setAudioToolOpen(true);
+    };
+
+    const openResultAudioExtract = (task: AudioExtractTask) => {
+        setAudioToolMounted(true);
+        setAudioToolEntry('result');
+        setAudioToolTask(task);
+        setAudioToolOpen(true);
+    };
+
     // 统一解析处理：只解析不自动下载
-    const handleUnifiedParse = async (videoUrl: string) => {
+    const handleUnifiedParse = useCallback(async (videoUrl: string) => {
+        void import('./unified-downloader-lower-sections');
+
         // 调用解析接口获取视频信息
-        const parseResponse = await axios.get(`${API_ENDPOINTS.unified.parse}?url=${encodeURIComponent(videoUrl)}`);
-
-        if (!parseResponse.data || !parseResponse.data.success) {
-            throw new Error(parseResponse.data?.error || 'Failed to parse video');
-        }
-
-        const apiResult: UnifiedParseResult = parseResponse.data;
-
-        if (!apiResult.data) {
-            throw new Error('No data returned from parse API');
-        }
-
-        // 直接保存完整 parseResult.data，便于 ResultCard 渲染所有字段
-        setParseResult(apiResult.data);
+        const apiResult = await requestUnifiedParse(videoUrl);
+        const normalizedData = {
+            ...apiResult.data,
+            platform: normalizePlatform(apiResult.data.platform),
+        };
+        const platformCode = normalizedData.platform;
+        const platformLabel = getPlatformLabel(platformCode, dict);
 
         // 添加到下载历史 - 如果没有 title，使用 desc
-        const displayTitle = apiResult.data.title || apiResult.data.desc || 'Unknown Title';
-        const newRecord: DownloadRecord = {
-            url: videoUrl,
+        // 使用 API 返回的规范 URL，避免口令等原始输入无法跳转
+        const displayTitle = normalizedData.title || normalizedData.desc || dict.history.unknownTitle;
+        const nextRecord: DownloadRecord = {
+            url: normalizedData.url || videoUrl,
             title: displayTitle,
             timestamp: Date.now(),
-            platform: apiResult.data.platform as Platform
+            platform: platformCode as Platform
         };
-        addToHistory(newRecord);
+
+        // Parse result card can be heavy on mobile. Mark as transition to keep interaction responsive.
+        startTransition(() => {
+            // 直接保存完整 parseResult.data，便于 ResultCard 渲染所有字段
+            setParseResult(normalizedData);
+            addToHistory(nextRecord);
+        });
 
         // 显示成功提示
         toast.success(dict.toast.douyinParseSuccess, {
-            description: `${apiResult.data.platform}: ${displayTitle}`,
+            description: `${platformLabel}: ${displayTitle}`,
         });
-    };
+
+        // 首次解析成功后提示安装 PWA
+        if (canPrompt && !hasPromptedInstall.current) {
+            hasPromptedInstall.current = true;
+            toast(dict.toast.installTitle, {
+                description: dict.toast.installDescription,
+                duration: 10000,
+                action: {
+                    label: dict.toast.installAction,
+                    onClick: promptInstall,
+                },
+                onDismiss: dismiss,
+            });
+        }
+    }, [addToHistory, canPrompt, dict, dismiss, promptInstall]);
 
     const closeParseResult = () => {
         setParseResult(null);
+        setSharePlaybackEnabled(false);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -89,6 +161,7 @@ export function UnifiedDownloader({ dict, locale }: UnifiedDownloaderProps) {
         setLoading(true);
         setError('');
         setParseResult(null);
+        setSharePlaybackEnabled(false);
 
         if (!url.trim()) {
             setError(dict.errors.emptyUrl);
@@ -102,9 +175,16 @@ export function UnifiedDownloader({ dict, locale }: UnifiedDownloaderProps) {
 
             setUrl('');
         } catch (err) {
-            const errorMessage = axios.isAxiosError(err)
-                ? (err.response?.data?.error || dict.errors.getVideoInfoFailed)
-                : (err instanceof Error ? err.message : dict.errors.downloadError);
+            if (isApiRequestError(err)) {
+                console.error('Unified parse request failed', {
+                    code: err.code,
+                    status: err.status,
+                    requestId: err.requestId,
+                    details: err.details,
+                });
+            }
+
+            const errorMessage = resolveApiErrorMessage(err, dict);
             setError(errorMessage);
             toast.error(dict.errors.downloadFailed, {
                 description: errorMessage
@@ -116,66 +196,190 @@ export function UnifiedDownloader({ dict, locale }: UnifiedDownloaderProps) {
 
     const handleRedownload = (url: string) => {
         setUrl(url);
+        setParseResult(null);
+        setSharePlaybackEnabled(false);
         toast(dict.toast.linkFilledForRedownload, {
             description: dict.toast.clickToRedownloadDesc,
         });
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    const sharedPlaySourceUrl = searchParams.get('play')?.trim() ?? '';
+    const sharedAutoplayRequested = searchParams.get('autoplay') === '1';
+    const sharePlaybackUrl = sharePlaybackEnabled ? resolveSharePlaybackUrl(parseResult) : null;
+    const hasDownloadHistory = downloadHistory.length > 0;
+    const showHistoryShortcut = historyHydrated && hasDownloadHistory;
+
+    useEffect(() => {
+        if (!sharedPlaySourceUrl) {
+            return;
+        }
+
+        const taskKey = `${sharedPlaySourceUrl}::${sharedAutoplayRequested ? '1' : '0'}`;
+        if (handledShareTaskRef.current === taskKey) {
+            return;
+        }
+        handledShareTaskRef.current = taskKey;
+
+        let cancelled = false;
+
+        const runSharedPlayback = async () => {
+            setLoading(true);
+            setError('');
+            setParseResult(null);
+            setUrl(sharedPlaySourceUrl);
+            setSharePlaybackEnabled(sharedAutoplayRequested);
+
+            try {
+                await handleUnifiedParse(sharedPlaySourceUrl);
+            } catch (err) {
+                if (cancelled) {
+                    return;
+                }
+
+                if (isApiRequestError(err)) {
+                    console.error('Shared playback parse failed', {
+                        code: err.code,
+                        status: err.status,
+                        requestId: err.requestId,
+                        details: err.details,
+                    });
+                }
+
+                const errorMessage = resolveApiErrorMessage(err, dict);
+                setError(errorMessage);
+                setSharePlaybackEnabled(false);
+                toast.error(dict.errors.downloadFailed, {
+                    description: errorMessage,
+                });
+            } finally {
+                if (!cancelled) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        void runSharedPlayback();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [dict, handleUnifiedParse, sharedAutoplayRequested, sharedPlaySourceUrl]);
+
+    useEffect(() => {
+        let idleId: number | null = null;
+        let timerId: ReturnType<typeof setTimeout> | null = null;
+
+        const preloadInteractiveChunks = () => {
+            void import('./unified-downloader-lower-sections');
+        };
+
+        if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+            idleId = window.requestIdleCallback(() => {
+                preloadInteractiveChunks();
+            }, { timeout: 3000 });
+        } else {
+            timerId = setTimeout(() => {
+                preloadInteractiveChunks();
+            }, 1200);
+        }
+
+        return () => {
+            if (idleId !== null && 'cancelIdleCallback' in window) {
+                window.cancelIdleCallback(idleId);
+            }
+            if (timerId !== null) {
+                clearTimeout(timerId);
+            }
+        };
+    }, []);
+
     return (
         <div className="min-h-screen flex flex-col bg-background">
-            <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-3 flex justify-end items-center gap-1">
-                    <ChangelogDialog locale={locale} dict={dict} />
-                    <LanguageSwitcher currentLocale={locale} dict={dict} />
-                </div>
-            </div>
+            <AppTopBar
+                showHistoryShortcut={showHistoryShortcut}
+                onHistoryClick={() => {
+                    if (historyRef.current) {
+                        const top = historyRef.current.getBoundingClientRect().top + window.scrollY - 64;
+                        window.scrollTo({ top, behavior: 'smooth' });
+                    }
+                }}
+                showAudioTool
+                onAudioToolClick={openToolbarAudioTool}
+            />
 
-            <main className="flex-1 p-4 sm:p-6 md:p-8 pt-6">
+            <DeferredAudioExtractDialog
+                mounted={audioToolMounted}
+                open={audioToolOpen}
+                onOpenChange={(nextOpen) => {
+                    setAudioToolOpen(nextOpen);
+                    if (!nextOpen) {
+                        setAudioToolTask(null);
+                        setAudioToolEntry('toolbar');
+                    }
+                }}
+                entry={audioToolEntry}
+                autoExtractTask={audioToolTask}
+            />
+
+            <main className="flex-1 p-3 sm:p-4 md:p-4 pt-4">
                 {/* PC端三栏布局，移动端垂直布局 */}
                 <div className="max-w-7xl mx-auto">
-                    <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                         {/* 左栏：快速入门指南 (PC端显示，移动端隐藏) */}
-                        <div className="hidden xl:block">
-                            <div className="sticky top-20 space-y-4">
-                                <QuickStartCard dict={dict} />
-                                <FreeSupportCard dict={dict} />
+                        <div className="hidden lg:block">
+                            <div className="sticky top-20 flex flex-col gap-4">
+                                {leftRail}
                             </div>
                         </div>
 
                         {/* 中栏：主要功能区域 */}
-                        <div className="xl:col-span-2 flex flex-col gap-4">
+                        <div className="lg:col-span-2 flex flex-col gap-4">
                             <Card className="shrink-0">
-                                <CardHeader>
+                                <CardHeader className="p-4">
                                     <h1 className="text-2xl text-center font-semibold tracking-tight">
-                                        <CardTitle>{dict.unified.pageTitle}</CardTitle>
+                                        {dict.unified.pageTitle}
                                     </h1>
-                                    <p className="text-xs text-muted-foreground text-center ">
+                                    <p className="text-xs text-foreground/70 text-center flex items-center justify-center gap-1.5 flex-wrap">
                                         {dict.unified.pageDescription}
                                     </p>
-
-                                    <p className="text-center text-xs text-muted-foreground ">
-                                        {dict.page.feedback}
-                                        <a
-                                            href="https://github.com/lxw15337674/bilibili-audio-downloader/issues/new"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="underline"
-                                        >
-                                            {dict.page.feedbackLinkText}
-                                        </a>
-                                    </p>
+                                    {dict.unified.exampleUrl && (
+                                        <div className="mx-auto flex max-w-full items-center justify-center">
+                                            <button
+                                                type="button"
+                                                className="inline-flex max-w-full items-center gap-1 rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-xs text-foreground/65 transition-colors hover:border-primary/35 hover:bg-muted/70 hover:text-foreground"
+                                                onClick={() => {
+                                                    setUrl(dict.unified.exampleUrl!);
+                                                    toast.success(dict.toast.linkFilled);
+                                                    window.requestAnimationFrame(() => {
+                                                        urlInputRef.current?.focus();
+                                                        const input = urlInputRef.current;
+                                                        if (input) {
+                                                            const valueLength = input.value.length;
+                                                            input.setSelectionRange(valueLength, valueLength);
+                                                        }
+                                                    });
+                                                }}
+                                            >
+                                                <Link2 className="h-3.5 w-3.5 shrink-0 text-foreground/45" />
+                                                <span className="shrink-0 text-foreground/45">{dict.unified.exampleLabel}</span>
+                                                <span className="truncate text-left">{dict.unified.exampleUrl}</span>
+                                            </button>
+                                        </div>
+                                    )}
+                                    {heroMeta}
                                 </CardHeader>
-                                <CardContent>
+                                <CardContent className="px-4 pb-4 pt-0">
                                     <form onSubmit={handleSubmit} className="space-y-6">
                                         <div className="space-y-2">
                                             <Textarea
                                                 id="url"
+                                                ref={urlInputRef}
                                                 value={url}
                                                 onChange={(e) => setUrl(e.target.value)}
                                                 placeholder={dict.unified.placeholder}
                                                 required
-                                                className="min-h-[80px] resize-none break-all"
+                                                className="min-h-[120px] resize-none break-all"
                                             />
                                             <div className="flex gap-2">
                                                 <Button
@@ -215,49 +419,60 @@ export function UnifiedDownloader({ dict, locale }: UnifiedDownloaderProps) {
                                     </form>
                                 </CardContent>
                             </Card>
-                            <ResultCard
-                                result={parseResult}
-                                    onClose={closeParseResult}
-                                    dict={dict}
-                            />
 
-                            {/* 历史记录 */}
-                            <DownloadHistory
-                                dict={dict}
-                                downloadHistory={downloadHistory || []}
+                            {sharePlaybackEnabled && parseResult && (
+                                <Card className="shrink-0">
+                                    <CardHeader className="p-4 pb-2">
+                                        <h2 className="text-base font-semibold">{dict.result.sharePlayPlayerTitle}</h2>
+                                        <p className="text-xs text-muted-foreground line-clamp-1" title={parseResult.title}>
+                                            {parseResult.title}
+                                        </p>
+                                    </CardHeader>
+                                    <CardContent className="px-4 pb-4 pt-0">
+                                        {sharePlaybackUrl ? (
+                                            <video
+                                                src={sharePlaybackUrl}
+                                                controls
+                                                autoPlay
+                                                muted
+                                                playsInline
+                                                preload="metadata"
+                                                className="w-full max-h-[60vh] rounded-lg bg-black"
+                                            />
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground">
+                                                {dict.result.sharePlayUnavailable}
+                                            </p>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            <UnifiedDownloaderLowerSections
+                                parseResult={parseResult}
+                                onCloseParseResult={closeParseResult}
+                                onOpenExtractAudio={openResultAudioExtract}
+                                mobileAd={mobileAd}
+                                mobileGuides={mobileGuides}
+                                downloadHistory={downloadHistory}
                                 clearHistory={clearDownloadHistory}
                                 onRedownload={handleRedownload}
+                                historyRef={historyRef}
+                                historyHydrated={historyHydrated}
                             />
-
-                            {/* 移动端帮助卡片 - 放在历史记录下方 */}
-                            <div className="xl:hidden space-y-4">
-                                <QuickStartCard dict={dict} />
-                                <FreeSupportCard dict={dict} />
-                                <PlatformGuideCard dict={dict} />
-                            </div>
                         </div>
 
                         {/* 右栏：平台支持指南 (PC端显示，移动端隐藏) */}
-                        <div className="hidden xl:block">
-                            <div className="sticky top-20">
-                                <PlatformGuideCard dict={dict} />
+                        <div className="hidden lg:block">
+                            <div className="sticky top-20 flex flex-col gap-4">
+                                {rightRail}
                             </div>
                         </div>
                     </div>
                 </div>
             </main>
 
-            {/* 页面底部版权说明 */}
-            <footer className="border-t bg-muted/30 py-6 mt-8">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-                    <div className="text-center text-xs text-muted-foreground space-y-1">
-                        <p className="text-yellow-600 font-medium">{dict.page.copyrightBilibiliRestriction}</p>
-                        <p>{dict.page.copyrightVideo}</p>
-                        <p>{dict.page.copyrightStorage}</p>
-                        <p>{dict.page.copyrightYear}</p>
-                    </div>
-                </div>
-            </footer>
+            {footer}
         </div>
     );
-} 
+}

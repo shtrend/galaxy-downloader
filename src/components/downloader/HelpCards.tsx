@@ -1,8 +1,9 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlayCircle, Globe, Link, CheckCircle, AlertCircle } from 'lucide-react';
+import { PlayCircle, Globe, Link } from 'lucide-react';
 import type { Dictionary } from '@/lib/i18n/types';
+import { PlatformSupportGrid } from './PlatformSupportGrid';
 
 interface HelpCardsProps {
     dict: Dictionary;
@@ -13,7 +14,7 @@ export function HelpCards({ dict }: HelpCardsProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:flex lg:flex-col lg:space-y-4">
             {/* 快速入门指南 */}
             <Card className="order-1">
-                <CardHeader>
+                <CardHeader className="p-4">
                     <CardTitle className="flex items-center gap-2 text-lg">
                         <PlayCircle className="h-5 w-5 text-primary" />
                         {dict.guide.quickStart.title}
@@ -36,41 +37,14 @@ export function HelpCards({ dict }: HelpCardsProps) {
 
             {/* 支持平台 */}
             <Card className="order-2">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <Globe className="h-5 w-5 text-primary" />
+                <CardHeader className="p-4">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                        <Globe className="h-4 w-4 text-primary" />
                         {dict.guide.platformSupport.title}
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                    <div className="flex items-start gap-3">
-                        <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                        <div>
-                            <p className="font-medium">{dict.guide.platformSupport.bilibili.name}</p>
-                            <div className="text-sm text-muted-foreground space-y-1">
-                                {dict.guide.platformSupport.bilibili.features.map((feature, index) => (
-                                    <p key={index}>• {feature.replace('✅ ', '')}</p>
-                                ))}
-                                {dict.guide.platformSupport.bilibili.limitations.map((limitation, index) => (
-                                    <p key={index}>• {limitation.replace('⚠️ ', '')}</p>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                        <AlertCircle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
-                        <div>
-                            <p className="font-medium">{dict.guide.platformSupport.douyin.name}</p>
-                            <div className="text-sm text-muted-foreground space-y-1">
-                                {dict.guide.platformSupport.douyin.features.map((feature, index) => (
-                                    <p key={index}>• {feature.replace('✅ ', '')}</p>
-                                ))}
-                                {dict.guide.platformSupport.douyin.limitations.map((limitation, index) => (
-                                    <p key={index}>• {limitation.replace('⚠️ ', '')}</p>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
+                <CardContent className="space-y-3 p-4">
+                    <PlatformSupportGrid dict={dict} />
 
                     {/* 音频提取说明 */}
                     {dict.guide.platformSupport.audioTip && (
@@ -94,13 +68,13 @@ export function HelpCards({ dict }: HelpCardsProps) {
 
             {/* URL格式说明 */}
             <Card className="order-3">
-                <CardHeader>
+                <CardHeader className="p-4">
                     <CardTitle className="flex items-center gap-2 text-lg">
                         <Link className="h-5 w-5 text-primary" />
                         {dict.guide.linkFormats.title}
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 p-4">
                     <div>
                         <p className="font-medium mb-2">{dict.guide.linkFormats.bilibili.title}</p>
                         <div className="bg-muted p-3 rounded-md space-y-1 text-sm font-mono">
@@ -113,6 +87,14 @@ export function HelpCards({ dict }: HelpCardsProps) {
                         <p className="font-medium mb-2">{dict.guide.linkFormats.douyin.title}</p>
                         <div className="bg-muted p-3 rounded-md space-y-1 text-sm font-mono">
                             {dict.guide.linkFormats.douyin.examples.map((example, index) => (
+                                <p key={index}>{example}</p>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <p className="font-medium mb-2">{dict.guide.linkFormats.telegram.title}</p>
+                        <div className="bg-muted p-3 rounded-md space-y-1 text-sm font-mono">
+                            {dict.guide.linkFormats.telegram.examples.map((example, index) => (
                                 <p key={index}>{example}</p>
                             ))}
                         </div>

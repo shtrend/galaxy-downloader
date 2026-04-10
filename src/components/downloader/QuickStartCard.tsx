@@ -3,7 +3,7 @@ import { PlayCircle } from 'lucide-react';
 import type { Dictionary } from '@/lib/i18n/types';
 
 interface QuickStartCardProps {
-    dict: Dictionary;
+    dict: Pick<Dictionary, 'guide'>;
 }
 
 export function QuickStartCard({ dict }: QuickStartCardProps) {
@@ -23,7 +23,7 @@ export function QuickStartCard({ dict }: QuickStartCardProps) {
                         </div>
                         <div>
                             <p className="font-medium">{step.title}</p>
-                            <p className="text-sm text-muted-foreground">{step.description}</p>
+                            <p className="text-sm text-foreground/75">{step.description}</p>
                         </div>
                     </div>
                 ))}

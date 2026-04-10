@@ -35,8 +35,19 @@ yarn-error.log*
 
 # vercel
 .vercel
+.wrangler/
+
+# PWA
+public/sw.js
+public/sw.js.map
+public/workbox-*.js
+public/worker-*.js
+public/fallback-*.js
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
 .env*.local
+/dist/
+
+.vscode

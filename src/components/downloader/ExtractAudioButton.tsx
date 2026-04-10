@@ -4,16 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Loader2, Music, AlertCircle, CheckCircle } from 'lucide-react';
 import { useFFmpeg, FFmpegStatus } from '@/hooks/use-ffmpeg';
-import type { Dictionary } from '@/lib/i18n/types';
+import { useDictionary } from '@/i18n/client';
 import { formatBytes } from '@/lib/utils';
 
 interface ExtractAudioButtonProps {
   videoUrl: string;
   title: string;
-  dict: Dictionary;
 }
 
-export function ExtractAudioButton({ videoUrl, title, dict }: ExtractAudioButtonProps) {
+export function ExtractAudioButton({ videoUrl, title }: ExtractAudioButtonProps) {
+  const dict = useDictionary();
   const { status, progress, progressInfo, error, extractAudio, reset } = useFFmpeg();
 
   const handleClick = () => {
@@ -61,12 +61,7 @@ export function ExtractAudioButton({ videoUrl, title, dict }: ExtractAudioButton
           </>
         );
       default:
-        return (
-          <>
-            <Music className="h-4 w-4" />
-            {dict.extractAudio.button}
-          </>
-        );
+        return dict.extractAudio.button;
     }
   };
 
@@ -74,7 +69,7 @@ export function ExtractAudioButton({ videoUrl, title, dict }: ExtractAudioButton
   const showProgress = (['downloading', 'converting'] as FFmpegStatus[]).includes(status);
 
   return (
-    <div className="flex-1 space-y-2">
+    <div className="space-y-2">
       <Button
         variant={status === 'error' ? 'destructive' : 'outline'}
         className="w-full flex items-center justify-center gap-2"

@@ -1,24 +1,26 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
+import type { Metadata, Viewport } from "next";
 import "../globals.css";
+import { DeferredRuntimeServices } from "@/components/deferred-runtime-services"
 import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/sonner"
-import { getDictionary } from "@/lib/i18n"
+import { DeferredToaster } from "@/components/deferred-toaster"
+import { NextIntlClientProvider } from "next-intl";
+import { hasLocale } from "next-intl";
+import { getMessages, setRequestLocale } from "next-intl/server";
+import { AppI18nProvider } from "@/i18n/client";
 import type { Locale } from "@/lib/i18n/config"
+import type { Dictionary } from "@/lib/i18n/types"
 import { i18n } from "@/lib/i18n/config"
-import { StructuredData } from "@/components/structured-data"
-import { Analytics } from '@vercel/analytics/next';
-
-const geistSans = Geist({
-    variable: "--font-geist-sans",
-    subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-    variable: "--font-geist-mono",
-    subsets: ["latin"],
-});
+import { routing } from "@/i18n/routing";
+import {
+    buildOpenGraphLocaleAlternates,
+    IS_INDEXABLE,
+    SITE_URL,
+    buildLanguageAlternates,
+    buildLocaleUrl,
+    localeToHtmlLang,
+    localeToOpenGraphLocale,
+} from "@/lib/seo"
+import { notFound } from "next/navigation";
 
 // 生成静态参数
 export async function generateStaticParams() {
@@ -32,7 +34,8 @@ export async function generateMetadata({
     params: Promise<{ locale: Locale }>
 }): Promise<Metadata> {
     const { locale } = await params
-    const dict = await getDictionary(locale)
+    const dict = await getMessages({ locale }) as Dictionary
+    const localeUrl = buildLocaleUrl(locale)
 
     return {
         title: dict.metadata.title,
@@ -49,20 +52,35 @@ export async function generateMetadata({
             address: false,
             telephone: false,
         },
-        metadataBase: new URL('https://downloader.bhwa233.com'),
+        other: {
+            'google-adsense-account': 'ca-pub-1581472267398547',
+            'mobile-web-app-capable': 'yes',
+            'msapplication-TileColor': '#000000',
+        },
+        metadataBase: new URL(SITE_URL),
         category: 'utilities',
+        icons: {
+            icon: [
+                { url: '/favicon.ico' },
+                { url: '/favicon.svg', type: 'image/svg+xml' },
+            ],
+            apple: [
+                { url: '/icons/apple-touch-icon.png' },
+            ],
+        },
         openGraph: {
             title: dict.metadata.ogTitle,
             description: dict.metadata.ogDescription,
-            url: `https://downloader.bhwa233.com/${locale}`,
+            url: localeUrl,
             siteName: dict.metadata.siteName,
-            locale: locale === 'zh' ? 'zh_CN' : locale === 'zh-tw' ? 'zh_TW' : 'en_US',
+            locale: localeToOpenGraphLocale(locale),
+            alternateLocale: buildOpenGraphLocaleAlternates(locale),
             type: 'website',
             images: [
                 {
-                    url: '/favicon.svg',
-                    width: 512,
-                    height: 512,
+                    url: '/og/home.png',
+                    width: 1200,
+                    height: 630,
                     alt: dict.metadata.siteName,
                 }
             ],
@@ -71,30 +89,37 @@ export async function generateMetadata({
             card: 'summary_large_image',
             title: dict.metadata.ogTitle,
             description: dict.metadata.ogDescription,
-            images: ['/favicon.svg'],
+            images: ['/og/home.png'],
         },
         robots: {
-            index: true,
-            follow: true,
+            index: IS_INDEXABLE,
+            follow: IS_INDEXABLE,
             googleBot: {
-                index: true,
-                follow: true,
+                index: IS_INDEXABLE,
+                follow: IS_INDEXABLE,
                 'max-video-preview': -1,
                 'max-image-preview': 'large',
                 'max-snippet': -1,
             },
         },
         alternates: {
-            canonical: `https://downloader.bhwa233.com/${locale}`,
-            languages: {
-                'zh-Hans': 'https://downloader.bhwa233.com/zh',
-                'zh-Hant': 'https://downloader.bhwa233.com/zh-tw',
-                'zh-TW': 'https://downloader.bhwa233.com/zh-tw',
-                'en': 'https://downloader.bhwa233.com/en',
-                'x-default': 'https://downloader.bhwa233.com/zh',
-            },
+            canonical: localeUrl,
+            languages: buildLanguageAlternates(),
+        },
+        manifest: "/manifest.webmanifest",
+        appleWebApp: {
+            capable: true,
+            statusBarStyle: 'black-translucent',
+            title: dict.metadata.siteName,
         },
     }
+}
+
+export const viewport: Viewport = {
+    width: 'device-width',
+    initialScale: 1,
+    themeColor: '#000000',
+    colorScheme: 'dark light',
 }
 
 export default async function RootLayout({
@@ -105,61 +130,33 @@ export default async function RootLayout({
     params: Promise<{ locale: string }>;
 }>) {
     const { locale: localeParam } = await params
+    if (!hasLocale(routing.locales, localeParam)) {
+        notFound()
+    }
+
     const locale = localeParam as Locale
-    const dict = await getDictionary(locale)
+    setRequestLocale(locale)
+    const dict = await getMessages({ locale }) as Dictionary
+    const htmlLang = localeToHtmlLang(locale)
 
     return (
-        <html lang={locale} suppressHydrationWarning>
-            <head>
-                <meta name="viewport" content="width=device-width, initial-scale=1" />
-                <meta name="theme-color" content="#000000" />
-                <meta name="color-scheme" content="dark light" />
-                <meta name="google-adsense-account" content="ca-pub-9521447814904059" />
-                <meta name="mobile-web-app-capable" content="yes" />
-                <meta name="apple-mobile-web-app-capable" content="yes" />
-                <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-                <meta name="apple-mobile-web-app-title" content={dict.metadata.siteName} />
-                <meta name="application-name" content={dict.metadata.siteName} />
-                <meta name="msapplication-TileColor" content="#000000" />
-                <meta name="msapplication-config" content="/browserconfig.xml" />
-                <meta name="format-detection" content="telephone=no" />
-                <meta httpEquiv="x-ua-compatible" content="ie=edge" />
-                <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-                <link rel="apple-touch-icon" href="/favicon.ico" />
-                <link rel="manifest" href="/manifest.json" />
-                <link rel="preconnect" href="https://fonts.googleapis.com" />
-                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-                <StructuredData locale={locale} dict={dict} />
-            </head>
-            <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-                <Toaster />
-                <Analytics />
-                <ThemeProvider
-                    attribute="class"
-                    defaultTheme="dark"
-                    enableSystem={true}
-                    disableTransitionOnChange
-                >
-                    {children}
-                </ThemeProvider>
-                <Script
-                    strategy="afterInteractive"
-                    src="https://www.googletagmanager.com/gtag/js?id=G-0BEHLKM3W5"
-                />
-                <Script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9521447814904059"
-                    crossOrigin="anonymous"></Script>
-                <Script
-                    id="google-analytics"
-                    strategy="afterInteractive"
-                >
-                    {`
-                        window.dataLayer = window.dataLayer || [];
-                        function gtag(){dataLayer.push(arguments);}
-                        gtag('js', new Date());
-                        gtag('config', 'G-0BEHLKM3W5');
-                    `}
-                </Script>
+        <html lang={htmlLang} suppressHydrationWarning>
+            <body className="antialiased">
+                <NextIntlClientProvider locale={locale} messages={dict}>
+                    <AppI18nProvider locale={locale} dictionary={dict}>
+                        <DeferredToaster />
+                        <DeferredRuntimeServices />
+                        <ThemeProvider
+                            attribute="class"
+                            defaultTheme="dark"
+                            enableSystem={true}
+                            disableTransitionOnChange
+                        >
+                            {children}
+                        </ThemeProvider>
+                    </AppI18nProvider>
+                </NextIntlClientProvider>
             </body>
         </html>
-    );
+    )
 }
