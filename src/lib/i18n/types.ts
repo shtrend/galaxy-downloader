@@ -5,21 +5,34 @@ export interface ResultDict {
     videoList: string;
     videoCount: string;
     downloadVideo: string;
+    browserDownloadVideo: string;
+
     mergeDownloadVideo: string;
     mergeDownloadVideoHint: string;
     downloadAudio: string;
+    playVideo: string;
+    playAudio: string;
     sharePlayLink: string;
     sharePlayLinkCopied: string;
+    previewPlayerTitle: string;
+    previewPlayerClose: string;
     sharePlayPlayerTitle: string;
     sharePlayUnavailable: string;
     pureMusicHint: string;
     originDownloadVideo: string;
     originDownloadAudio: string;
     totalParts: string;
+    showAllParts: string;
+    collapseParts: string;
+    loadMoreItems: string;
+    shownItems: string;
+    collectionSearchPlaceholder: string;
+    collectionNoSearchResults: string;
     articleVideoList: string;
     articleVideoCount: string;
     articleVideoUntitled: string;
     downloadImage: string;
+    downloadCover: string;
     coverLabel: string;
     imageIndexLabel: string;
     imageAlt: string;
@@ -37,6 +50,7 @@ export interface ResultDict {
 
 export interface CommonDict {
     home: string;
+    backToTop: string;
     relatedPages: string;
     privacy: string;
     terms: string;
@@ -119,10 +133,22 @@ export interface Dictionary {
         platforms: {
             bilibili: string;
             bilibiliTv: string;
+            dailymotion: string;
             douyin: string;
+            kuaishou: string;
+            newgrounds: string;
+            okru: string;
+            pinterest: string;
+            reddit: string;
+            soundcloud: string;
+            streamable: string;
+            twitch: string;
+            tumblr: string;
             youtube: string;
             telegram: string;
             threads: string;
+            vk: string;
+            vimeo: string;
             wechat: string;
             niconico: string;
             weibo: string;
@@ -130,6 +156,7 @@ export interface Dictionary {
             tiktok: string;
             instagram: string;
             x: string;
+            generic: string;
             unknown: string;
         };
     };
@@ -145,7 +172,6 @@ export interface Dictionary {
     metadata: {
         title: string;
         description: string;
-        keywords: string;
         ogTitle: string;
         ogDescription: string;
         siteName: string;
@@ -156,6 +182,8 @@ export interface Dictionary {
         'zh-tw': string;
         en: string;
         ja: string;
+        es: string;
+        ru: string;
     };
     douyin: {
         apiLimitDownload: string;
@@ -219,6 +247,45 @@ export interface Dictionary {
         statusReadingAudio: string;
         statusMerging: string;
     };
+    hlsDownload: {
+        description: string;
+        outputTitle: string;
+        outputPlaceholder: string;
+        sourceUrl: string;
+        sourcePlaceholder: string;
+        refererUrl: string;
+        refererPlaceholder: string;
+        segmentCount: string;
+        segmentCountPlaceholder: string;
+        resolveButton: string;
+        resolvingButton: string;
+        downloadButton: string;
+        downloadingButton: string;
+        statusLabel: string;
+        idleStatus: string;
+        resolvingStatus: string;
+        resolvedStatus: string;
+        resolveFailedStatus: string;
+        downloadingStatus: string;
+        downloadCompletedStatus: string;
+        downloadFailedStatus: string;
+        largeVideoBrowserLimitedStatus: string;
+        progressLabel: string;
+        speedLabel: string;
+        etaLabel: string;
+        calculatingLabel: string;
+        confirmCloseTitle: string;
+        confirmCloseDescription: string;
+        confirmCloseAction: string;
+        resolvedPlaylist: string;
+        totalSegments: string;
+        selectedSegments: string;
+        encryptedLabel: string;
+        encryptedYes: string;
+        encryptedNo: string;
+        encryptedHint: string;
+        previewSegmentUrls: string;
+    };
     guide: {
         quickStart: {
             title: string;
@@ -253,6 +320,12 @@ export interface Dictionary {
                         url: string;
                     };
                 };
+            };
+            hls: {
+                name: string;
+                summary: string;
+                features?: string[];
+                limitations?: string[];
             };
             youtube: {
                 name: string;
@@ -314,6 +387,88 @@ export interface Dictionary {
                 features?: string[];
                 limitations?: string[];
             };
+            vimeo: {
+                name: string;
+                summary: string;
+                features?: string[];
+                limitations?: string[];
+            };
+            dailymotion: {
+                name: string;
+                summary: string;
+                features?: string[];
+                limitations?: string[];
+            };
+            streamable: {
+                name: string;
+                summary: string;
+                features?: string[];
+                limitations?: string[];
+            };
+            reddit: {
+                name: string;
+                summary: string;
+                features?: string[];
+                limitations?: string[];
+            };
+            newgrounds: {
+                name: string;
+                summary: string;
+                features?: string[];
+                limitations?: string[];
+            };
+            tumblr: {
+                name: string;
+                summary: string;
+                features?: string[];
+                limitations?: string[];
+            };
+            pinterest: {
+                name: string;
+                summary: string;
+                features?: string[];
+                limitations?: string[];
+            };
+            vk: {
+                name: string;
+                summary: string;
+                features?: string[];
+                limitations?: string[];
+            };
+            okru: {
+                name: string;
+                summary: string;
+                features?: string[];
+                limitations?: string[];
+            };
+            twitch: {
+                name: string;
+                summary: string;
+                features?: string[];
+                limitations?: string[];
+            };
+            soundcloud: {
+                name: string;
+                summary: string;
+                features?: string[];
+                limitations?: string[];
+            };
+            applePodcasts: {
+                name: string;
+                summary: string;
+                features?: string[];
+                limitations?: string[];
+            };
+            kuaishou: { name: string; summary: string; };
+            zhihu: { name: string; summary: string; };
+            generic: { name: string; summary: string; };
+            bluesky: { name: string; summary: string; };
+            rumble: { name: string; summary: string; };
+            snapchat: { name: string; summary: string; };
+            coub: { name: string; summary: string; };
+            imgur: { name: string; summary: string; };
+            odysee: { name: string; summary: string; };
+            rutube: { name: string; summary: string; };
             audioTip?: {
                 title: string;
                 steps: string;
@@ -344,6 +499,11 @@ export interface Dictionary {
             tip: string;
         };
     };
+    todayStats: {
+        title: string;
+        todayCountLabel: string;
+        totalCountLabel: string;
+    };
     freeSupport: {
         title: string;
         features: {
@@ -367,6 +527,8 @@ export interface Dictionary {
             zh: string[];
             'zh-tw': string[];
             ja: string[];
+            es: string[];
+            ru: string[];
         };
         howTo: {
             title: {
@@ -374,6 +536,8 @@ export interface Dictionary {
                 zh: string;
                 'zh-tw': string;
                 ja: string;
+                es: string;
+                ru: string;
             };
             steps: {
                 en: Array<{
@@ -392,12 +556,28 @@ export interface Dictionary {
                     name: string;
                     text: string;
                 }>;
+                es: Array<{
+                    name: string;
+                    text: string;
+                }>;
+                ru: Array<{
+                    name: string;
+                    text: string;
+                }>;
             };
         };
     };
     contactPage: StaticPageMetaDict & {
         github: string;
         githubHint: string;
+        feedback: string;
+        feedbackHint: string;
+    };
+    feedbackPage: Omit<StaticPageMetaDict, "intro"> & {
+        privateFeedbackTitle: string;
+        privateFeedbackDescription: string;
+        emailAction: string;
+        emailTemplateBody: string;
     };
     privacyPage: StaticPageMetaDict & {
         points: string[];
@@ -435,6 +615,7 @@ export interface Dictionary {
         emailInvalid: string;
         emailHint: string;
         emailRequired: string;
+        diagnosticInfoHint: string;
         cancelButton: string;
         submitButton: string;
         submittingButton: string;

@@ -1,4 +1,5 @@
-import type { MediaActions } from '@/lib/types'
+import type { MediaActions, UnifiedParseResultImage } from '@/lib/types'
+import { isHlsPlaylistUrl } from '@/lib/hls-playback'
 
 type LegacyVideoAudioMode = 'muxed' | 'separate' | 'pure_music' | 'not_applicable'
 
@@ -14,13 +15,15 @@ export function shouldHideSingleImagePreview(
     return singleImageMode && !!state && !state.loading && state.error
 }
 
-export type ResultVideoAction = 'direct-download' | 'merge-then-download' | 'hide'
+export type ResultVideoAction = 'direct-download' | 'merge-then-download' | 'browser-hls-download' | 'hide'
 export type ResultAudioAction = 'direct-download' | 'extract-audio' | 'hide'
 
 interface ResultMediaActionInput {
     videoAudioMode?: LegacyVideoAudioMode
     videoDownloadUrl?: string | null
     audioDownloadUrl?: string | null
+    originDownloadVideoUrl?: string | null
+    originDownloadAudioUrl?: string | null
     mediaActions?: MediaActions
 }
 
@@ -29,8 +32,14 @@ export interface ResultMediaActions {
     audioAction: ResultAudioAction
 }
 
-function hasSourceUrl(url: string | null | undefined): url is string {
-    return typeof url === 'string' && url.length > 0
+export function hasSourceUrl(url: string | null | undefined): url is string {
+    if (typeof url !== 'string') {
+        return false
+    }
+
+    // 上游偶尔用 '#' 之类的占位符顶替没解析出来的轨道，长度非零但点了什么都拿不到
+    const trimmed = url.trim()
+    return trimmed.length > 0 && trimmed !== '#'
 }
 
 function sanitizeProvidedMediaActions(
@@ -38,13 +47,21 @@ function sanitizeProvidedMediaActions(
     hasVideo: boolean,
     hasAudio: boolean
 ): ResultMediaActions {
-    const videoAction = mediaActions.video === 'merge-then-download'
-        ? (hasVideo && hasAudio ? 'merge-then-download' : 'hide')
-        : (mediaActions.video === 'direct-download' && hasVideo ? 'direct-download' : 'hide')
+    let videoAction: ResultVideoAction = 'hide'
+    if (mediaActions.video === 'merge-then-download') {
+        videoAction = hasVideo && hasAudio ? 'merge-then-download' : 'hide'
+    } else if (mediaActions.video === 'direct-download') {
+        videoAction = hasVideo ? 'direct-download' : 'hide'
+    } else if (mediaActions.video === 'browser-hls-download') {
+        videoAction = hasVideo ? 'browser-hls-download' : 'hide'
+    }
 
-    const audioAction = mediaActions.audio === 'direct-download'
-        ? (hasAudio ? 'direct-download' : 'hide')
-        : (mediaActions.audio === 'extract-audio' && hasVideo ? 'extract-audio' : 'hide')
+    let audioAction: ResultAudioAction = 'hide'
+    if (mediaActions.audio === 'direct-download') {
+        audioAction = hasAudio ? 'direct-download' : 'hide'
+    } else if (mediaActions.audio === 'extract-audio') {
+        audioAction = hasVideo ? 'extract-audio' : 'hide'
+    }
 
     return {
         videoAction,
@@ -56,6 +73,8 @@ export function getResultMediaActions({
     videoAudioMode,
     videoDownloadUrl,
     audioDownloadUrl,
+    originDownloadVideoUrl,
+    originDownloadAudioUrl,
     mediaActions,
 }: ResultMediaActionInput): ResultMediaActions {
     const hasVideo = hasSourceUrl(videoDownloadUrl)
@@ -65,18 +84,21 @@ export function getResultMediaActions({
         return sanitizeProvidedMediaActions(mediaActions, hasVideo, hasAudio)
     }
 
+    const isVideoHls = isHlsPlaylistUrl(originDownloadVideoUrl) || isHlsPlaylistUrl(videoDownloadUrl)
+    const isAudioHls = isHlsPlaylistUrl(originDownloadAudioUrl) || isHlsPlaylistUrl(audioDownloadUrl)
+
     // Prefer native audio download whenever backend provides a direct audio url.
     if (hasAudio) {
         if (videoAudioMode === 'separate') {
             return {
                 videoAction: hasVideo ? 'merge-then-download' : 'hide',
-                audioAction: 'direct-download',
+                audioAction: isAudioHls ? 'hide' : 'direct-download',
             }
         }
 
         return {
-            videoAction: hasVideo ? 'direct-download' : 'hide',
-            audioAction: 'direct-download',
+            videoAction: hasVideo ? (isVideoHls ? 'browser-hls-download' : 'direct-download') : 'hide',
+            audioAction: isAudioHls ? 'hide' : 'direct-download',
         }
     }
 
@@ -90,27 +112,27 @@ export function getResultMediaActions({
     if (videoAudioMode === 'pure_music') {
         return {
             videoAction: 'hide',
-            audioAction: hasAudio ? 'direct-download' : 'hide',
+            audioAction: hasAudio ? (isAudioHls ? 'hide' : 'direct-download') : 'hide',
         }
     }
 
     if (videoAudioMode === 'muxed') {
         return {
-            videoAction: hasVideo ? 'direct-download' : 'hide',
-            audioAction: hasVideo ? 'extract-audio' : 'hide',
+            videoAction: hasVideo ? (isVideoHls ? 'browser-hls-download' : 'direct-download') : 'hide',
+            audioAction: isVideoHls ? 'hide' : (hasVideo ? 'extract-audio' : 'hide'),
         }
     }
 
     if (videoAudioMode === 'not_applicable') {
         return {
-            videoAction: hasVideo ? 'direct-download' : 'hide',
+            videoAction: hasVideo ? (isVideoHls ? 'browser-hls-download' : 'direct-download') : 'hide',
             audioAction: 'hide',
         }
     }
 
     return {
-        videoAction: hasVideo ? 'direct-download' : 'hide',
-        audioAction: hasVideo ? 'extract-audio' : 'hide',
+        videoAction: hasVideo ? (isVideoHls ? 'browser-hls-download' : 'direct-download') : 'hide',
+        audioAction: isVideoHls ? 'hide' : (hasVideo ? 'extract-audio' : 'hide'),
     }
 }
 
@@ -120,13 +142,33 @@ export function shouldShowVideoDownloadButton(videoDownloadUrl: string | null | 
 
 interface ResultDisplayImagesInput {
     noteType?: 'video' | 'image' | 'audio'
-    images?: string[] | null
+    images?: Array<string | UnifiedParseResultImage> | null
     coverUrl?: string | null
 }
 
-function normalizeResultImages(images?: string[] | null): string[] {
+function extractResultImageUrl(value: string | UnifiedParseResultImage | null | undefined): string {
+    if (typeof value === 'string') {
+        return value.trim()
+    }
+
+    if (!value || typeof value !== 'object') {
+        return ''
+    }
+
+    if (typeof value.url === 'string') {
+        return value.url.trim()
+    }
+
+    if (typeof value.downloadUrl === 'string') {
+        return value.downloadUrl.trim()
+    }
+
+    return ''
+}
+
+function normalizeResultImages(images?: Array<string | UnifiedParseResultImage> | null): string[] {
     const normalized = (images ?? [])
-        .map((value) => value.trim())
+        .map((value) => extractResultImageUrl(value))
         .filter((value) => value.length > 0)
 
     return Array.from(new Set(normalized))

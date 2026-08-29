@@ -3,10 +3,11 @@ import "../globals.css";
 import { DeferredRuntimeServices } from "@/components/deferred-runtime-services"
 import { ThemeProvider } from "@/components/theme-provider";
 import { DeferredToaster } from "@/components/deferred-toaster"
-import { NextIntlClientProvider } from "next-intl";
 import { hasLocale } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { AppI18nProvider } from "@/i18n/client";
+import { AppTopBar } from "@/components/layout/app-top-bar";
+import { TopBarActionsProvider } from "@/components/layout/top-bar-actions";
 import type { Locale } from "@/lib/i18n/config"
 import type { Dictionary } from "@/lib/i18n/types"
 import { i18n } from "@/lib/i18n/config"
@@ -19,6 +20,7 @@ import {
     buildLocaleUrl,
     localeToHtmlLang,
     localeToOpenGraphLocale,
+    resolvePublicMetadataDescription,
 } from "@/lib/seo"
 import { notFound } from "next/navigation";
 
@@ -36,11 +38,11 @@ export async function generateMetadata({
     const { locale } = await params
     const dict = await getMessages({ locale }) as Dictionary
     const localeUrl = buildLocaleUrl(locale)
+    const publicDescription = resolvePublicMetadataDescription(locale)
 
     return {
         title: dict.metadata.title,
-        description: dict.metadata.description,
-        keywords: dict.metadata.keywords.split(','),
+        description: publicDescription,
         authors: [{ name: dict.metadata.siteName }],
         creator: dict.metadata.siteName,
         publisher: dict.metadata.siteName,
@@ -142,20 +144,21 @@ export default async function RootLayout({
     return (
         <html lang={htmlLang} suppressHydrationWarning>
             <body className="antialiased">
-                <NextIntlClientProvider locale={locale} messages={dict}>
-                    <AppI18nProvider locale={locale} dictionary={dict}>
-                        <DeferredToaster />
-                        <DeferredRuntimeServices />
-                        <ThemeProvider
-                            attribute="class"
-                            defaultTheme="dark"
-                            enableSystem={true}
-                            disableTransitionOnChange
-                        >
+                <AppI18nProvider locale={locale} dictionary={dict}>
+                    <DeferredRuntimeServices />
+                    <ThemeProvider
+                        attribute="class"
+                        defaultTheme="dark"
+                        enableSystem={true}
+                        disableTransitionOnChange
+                    >
+                        <TopBarActionsProvider>
+                            <AppTopBar />
                             {children}
-                        </ThemeProvider>
-                    </AppI18nProvider>
-                </NextIntlClientProvider>
+                        </TopBarActionsProvider>
+                        <DeferredToaster />
+                    </ThemeProvider>
+                </AppI18nProvider>
             </body>
         </html>
     )

@@ -1,6 +1,6 @@
 # 通用媒体下载器
 
-这是一个基于 [vinext](https://github.com/cloudflare/vinext) 运行的 Next.js App Router 兼容项目，支持从 Bilibili、抖音、Instagram、小红书、TikTok、X 等平台下载视频、音频和图文内容。
+这是一个基于 [vinext](https://github.com/cloudflare/vinext) 运行的 Next.js App Router 兼容项目，支持从 Bilibili、抖音、Instagram、小红书、TikTok、X、Telegram、Threads、微信公众号、微博、Niconico、Vimeo、Dailymotion、Streamable、Reddit、Newgrounds、Tumblr、Pinterest、VK、OK.ru、Twitch、SoundCloud 等平台下载媒体内容。
 
 ## 功能特点
 
@@ -9,7 +9,8 @@
 - 📱 支持 Instagram Reels、帖子和图文内容下载
 - 📷 支持小红书视频笔记和图文笔记下载
 - 🎞️ 支持 TikTok 视频下载
-- 🐦 支持 X 视频下载及音频提取
+- 🐦 支持 X 视频下载
+- 🌐 支持 Vimeo、Dailymotion、Streamable、Reddit、Newgrounds、Tumblr、Pinterest、VK、OK.ru、Twitch、SoundCloud 等平台内容解析与下载
 - 🔍 自动识别平台链接
 - 🎨 现代化的用户界面设计
 - 💾 本地下载历史记录
@@ -27,7 +28,7 @@ pnpm dev
 
 ## 使用方法
 
-1. 复制媒体链接（支持 Bilibili、抖音、Instagram、小红书、TikTok、X 等平台）
+1. 复制媒体链接（支持首页展示的平台）
 2. 粘贴到输入框中
 3. 点击解析按钮
 4. 选择下载视频、音频或图片
@@ -41,6 +42,11 @@ pnpm dev
 - **小红书**: `https://www.xiaohongshu.com/explore/...` 或 `https://xhslink.com/...`
 - **TikTok**: `https://www.tiktok.com/@.../video/...`
 - **X**: `https://x.com/.../status/...`
+- **Pinterest**: `https://www.pinterest.com/pin/70437485604603/`
+- **VK**: `https://vk.com/video-1_456239018`
+- **OK.ru**: `https://ok.ru/video/14627121662690`
+- **Twitch**: `https://m.twitch.tv/ninja/clip/SuaveNeighborlySrirachaHeyGirl-1J8kzeLFWxdUBZ4C`
+- **SoundCloud**: `https://soundcloud.com/forss/flickermood`
 
 ## 技术栈
 
@@ -64,6 +70,22 @@ pnpm dev
 - **小红书**: 视频、图文
 - **TikTok**: 视频
 - **X**: 视频
+- **Telegram**: 视频
+- **Threads**: 视频、图文
+- **微信公众号**: 文章视频、多视频
+- **微博**: 视频、图文、多视频
+- **Niconico**: 视频
+- **Vimeo**: 内容下载
+- **Dailymotion**: 内容下载
+- **Streamable**: 内容下载
+- **Reddit**: 内容下载
+- - **Newgrounds**: 内容下载
+- **Tumblr**: 内容下载
+- **Pinterest**: 内容下载
+- **VK**: 内容下载
+- **OK.ru**: 内容下载
+- **Twitch**: 内容下载
+- **SoundCloud**: 内容下载
 
 说明：
 
@@ -92,13 +114,15 @@ pnpm dev
 
 ## SEO 配置
 
-部署时建议配置以下环境变量，确保上游解析服务、canonical 和索引策略都正确：
+部署时建议配置以下环境变量，确保公开 API、canonical 和索引策略都正确：
 
-- `API_BASE_URL`: 上游解析服务地址，例如 `https://api.example.com`。生产和预发部署必须配置；本地开发未配置时默认使用 `http://localhost:8080`
+- `NEXT_PUBLIC_API_BASE_URL`: 公开下载 API 地址，例如 `https://downloader-api.bhwa233.com`。前端会直接请求这个地址；本地开发未配置时默认使用 `http://localhost:8788`
 - `NEXT_PUBLIC_SITE_URL`: 当前环境站点地址（例如 `https://downloader.bhwa233.com`）
 - `SEO_INDEXABLE`: 是否允许索引，`true` / `false`
 
-如果生产或预发环境未配置 `API_BASE_URL`，应用的代理接口会返回 `503 SERVICE_UNAVAILABLE` JSON 错误，而不是未处理的 500。
+如果本地开发未配置 `NEXT_PUBLIC_SITE_URL`，应用会默认使用 `http://localhost:3010` 作为站点基址，避免 manifest、canonical 和 Open Graph 链接错误地指向生产域名。
+
+如果生产或预发环境需要接入非默认公开 API，请显式配置 `NEXT_PUBLIC_API_BASE_URL`，避免客户端请求落到错误的域名。
 
 默认策略：
 
@@ -130,6 +154,8 @@ Cloudflare Workers 部署请使用：
 ```bash
 pnpm deploy
 ```
+
+部署脚本会只针对 Cloudflare API 的 `971` 限流错误自动退避重试（默认间隔为 60、120、180 秒）。其他错误会立即失败，避免掩盖配置或构建问题。可通过 `CF_DEPLOY_MAX_ATTEMPTS` 和 `CF_DEPLOY_RETRY_DELAY_MS` 调整重试次数和基础等待时间。
 
 如果平台已经先执行过 `pnpm build`，部署命令请改为：
 

@@ -10,7 +10,7 @@
         "pageDescription": "貼上連結後自動識別內容，快速下載影片、音訊、純音樂或圖文。",
         "placeholder": "請在此處貼上連結或口令...",
         "newBadge": "新增抖音圖文支援",
-        "exampleLabel": "例如：",
+        "exampleLabel": "貼上示例",
         "exampleUrl": "https://www.bilibili.com/video/BV1Wv3ez2Ex8/"
     },
     "page": {
@@ -21,7 +21,7 @@
         "copyrightVideo": "版權說明：影片版權歸相關網站及作者所有",
         "copyrightStorage": "本站不提供和儲存任何影片及圖片",
         "copyrightYear": "Copyright © {year}",
-        "copyrightBilibiliRestriction": "⚠️ 不支援下載版權受限（如會員專享、付費）或平台存取受限（如 Telegram / X 限制級、需登入或受限內容）的影片。"
+        "copyrightBilibiliRestriction": "⚠️ 不支援下載版權、付費或會員受限內容。"
     },
     "form": {
         "pasteButton": "貼上",
@@ -84,17 +84,30 @@
             "bilibili": "嗶哩嗶哩",
             "bilibiliTv": "Bilibili TV",
             "douyin": "抖音",
+            "kuaishou": "快手",
             "youtube": "YouTube",
             "telegram": "Telegram",
             "wechat": "微信公眾號",
             "niconico": "Niconico",
             "xiaohongshu": "小紅書",
             "tiktok": "TikTok",
+            "generic": "網頁影片",
             "unknown": "未知",
             "instagram": "Instagram",
             "x": "X",
             "threads": "Threads",
-            "weibo": "微博"
+            "weibo": "微博",
+            "dailymotion": "Dailymotion",
+            "newgrounds": "Newgrounds",
+            "okru": "OK.ru",
+            "pinterest": "Pinterest",
+            "reddit": "Reddit",
+            "soundcloud": "SoundCloud",
+            "streamable": "Streamable",
+            "twitch": "Twitch",
+            "tumblr": "Tumblr",
+            "vk": "VK",
+            "vimeo": "Vimeo"
         }
     },
     "toast": {
@@ -107,15 +120,15 @@
         "installAction": "立即安裝"
     },
     "metadata": {
-        "title": "通用媒體下載器｜Bilibili、抖音、Instagram、TikTok、X 下載工具",
-        "description": "免費線上媒體下載工具，支援 Bilibili、抖音、Telegram、Threads、微信公眾號、微博、Niconico、Instagram、小紅書、TikTok 與 X。自動識別連結並下載影片、音訊或圖文內容。",
-        "keywords": "線上媒體下載器,嗶哩嗶哩影片下載,嗶哩嗶哩音訊下載,抖音影片下載,抖音純音樂下載,Telegram影片下載,Threads影片下載,Threads圖文下載,微信公眾號影片下載,微博影片下載,微博圖文下載,微博混合媒體下載,Niconico影片下載,Niconico音訊下載,Instagram Reels下載,Instagram貼文下載,Instagram圖文貼文下載,小紅書影片下載,小紅書圖文下載,TikTok影片下載,X影片下載",
-        "ogTitle": "通用媒體下載器｜免費線上下載工具",
-        "ogDescription": "自動識別 Bilibili、抖音、Telegram、Threads、微信公眾號、微博、Niconico、Instagram、小紅書、TikTok 與 X 連結，線上下載影片、音訊或圖文內容。",
-        "siteName": "通用媒體下載器"
+        "title": "sparkdownloader｜線上影片、音訊、圖文、HLS 下載工具",
+        "description": "免費線上媒體下載工具，支援 Bilibili、抖音、Telegram、Threads、微信公眾號、微博、Niconico、Instagram、小紅書、TikTok、X、Reddit、Streamable、SoundCloud、Twitch、VK、OK.ru、Pinterest、Tumblr、Newgrounds 與 HLS/M3U8 串流媒體內容。",
+        "ogTitle": "sparkdownloader｜免費線上媒體下載工具",
+        "ogDescription": "自動識別影片、音訊、圖文和 HLS/M3U8 連結，線上下載媒體內容，無需註冊。",
+        "siteName": "sparkdownloader"
     },
     "common": {
         "home": "首頁",
+        "backToTop": "回到頂部",
         "relatedPages": "相關頁面",
         "privacy": "隱私政策",
         "terms": "使用條款",
@@ -123,15 +136,26 @@
         "trustAndPolicies": "信任與政策"
     },
     "contactPage": {
-        "metaTitle": "聯絡我們｜通用媒體下載器",
+        "metaTitle": "聯絡我們｜sparkdownloader",
         "metaDescription": "聯絡下載工具團隊，提交問題回報、功能建議或 SEO 反饋。",
         "title": "聯絡我們",
         "intro": "你可以透過以下方式提交問題回報或功能建議。",
+        "feedback": "前往回饋討論區",
+        "feedbackHint": "適合公開討論功能建議、平台支援請求和一般問題。",
         "github": "前往 GitHub 提交 Issue",
         "githubHint": "適合回報錯誤與提出功能需求。"
     },
+    "feedbackPage": {
+        "metaTitle": "回饋｜sparkdownloader",
+        "metaDescription": "在 sparkdownloader 回饋頁提交公開討論和功能建議。",
+        "title": "回饋",
+        "privateFeedbackTitle": "透過郵件回饋",
+        "privateFeedbackDescription": "您也可以選擇透過發送郵件來提交您的回饋。為了讓我們更快定位問題，建議在郵件中提供遇到問題的目標連結、設備資訊或相關截圖。",
+        "emailAction": "發送郵件",
+        "emailTemplateBody": "【問題描述】\n請簡要描述遇到的問題或建議：\n\n【目標連結】\n(如涉及解析失敗，請提供原連結)\n\n【設備與環境】\n(例：Win 11 / Chrome 120 / iOS 17)\n"
+    },
     "privacyPage": {
-        "metaTitle": "隱私政策｜通用媒體下載器",
+        "metaTitle": "隱私政策｜sparkdownloader",
         "metaDescription": "說明本站如何處理資料、瀏覽器儲存、分析服務與隱私保護。",
         "title": "隱私政策",
         "intro": "本頁說明在使用下載工具時，網站如何處理相關資料。",
@@ -144,7 +168,7 @@
         "updated": "最後更新：2026-02-18"
     },
     "termsPage": {
-        "metaTitle": "使用條款｜通用媒體下載器",
+        "metaTitle": "使用條款｜sparkdownloader",
         "metaDescription": "說明下載工具的使用條件、限制與責任範圍。",
         "title": "使用條款",
         "intro": "使用本服務即表示你同意遵守相關版權規範與平台規則。",
@@ -160,7 +184,9 @@
         "zh": "简体中文",
         "zh-tw": "繁體中文",
         "en": "English",
-        "ja": "日本語"
+        "ja": "日本語",
+        "es": "Español",
+        "ru": "Русский"
     },
     "douyin": {
         "apiLimitDownload": "如果自動下載失敗，請點擊開啟連結手動下載（下載功能在影片右下角）"
@@ -224,6 +250,45 @@
         "statusReadingAudio": "正在讀取音訊…",
         "statusMerging": "正在合併…"
     },
+    "hlsDownload": {
+        "description": "正在準備下載資源，準備完成後請點擊開始下載。",
+        "outputTitle": "輸出檔名",
+        "outputPlaceholder": "可選檔名前綴",
+        "sourceUrl": "來源頁面或 m3u8 連結",
+        "sourcePlaceholder": "貼上可解析出 HLS 播放清單的頁面連結",
+        "refererUrl": "可選 Referer 覆蓋",
+        "refererPlaceholder": "當輸入已經是 m3u8 連結時可單獨指定 Referer",
+        "segmentCount": "分片數量",
+        "segmentCountPlaceholder": "留空表示下載全部",
+        "resolveButton": "解析播放清單",
+        "resolvingButton": "解析中...",
+        "downloadButton": "在瀏覽器下載",
+        "downloadingButton": "下載中...",
+        "statusLabel": "下載進度",
+        "idleStatus": "準備開始下載。",
+        "resolvingStatus": "正在準備下載...",
+        "resolvedStatus": "播放清單已解析，可以開始下載。",
+        "resolveFailedStatus": "播放清單解析失敗。",
+        "downloadingStatus": "正在下載，請稍候...",
+        "downloadCompletedStatus": "下載完成，您可以關閉該彈窗。",
+        "downloadFailedStatus": "下載失敗，請重試。",
+        "largeVideoBrowserLimitedStatus": "目前瀏覽器不適合下載這個較大的影片，請改用 Chrome 或 Edge 再試一次。",
+        "progressLabel": "已完成",
+        "speedLabel": "速度",
+        "etaLabel": "預計",
+        "calculatingLabel": "計算中",
+        "confirmCloseTitle": "確認關閉？",
+        "confirmCloseDescription": "關閉後會停止目前下載。",
+        "confirmCloseAction": "確認關閉",
+        "resolvedPlaylist": "已解析播放清單",
+        "totalSegments": "總分片數：{count}",
+        "selectedSegments": "本次下載：{count}",
+        "encryptedLabel": "AES-128 加密",
+        "encryptedYes": "是",
+        "encryptedNo": "否",
+        "encryptedHint": "檢測到 AES-128 HLS 加密。瀏覽器會先取得金鑰、解密分片，再合併輸出。",
+        "previewSegmentUrls": "分片預覽"
+    },
     "guide": {
         "quickStart": {
             "title": "三步輕鬆下載",
@@ -268,6 +333,14 @@
                     "影片",
                     "圖文",
                     "音訊"
+                ]
+            },
+            "hls": {
+                "name": "影片網站",
+                "summary": "網頁串流媒體影片",
+                "features": [
+                    "線上播放",
+                    "分片下載"
                 ]
             },
             "youtube": {
@@ -318,7 +391,7 @@
                     "音訊"
                 ]
             },
-            "comingSoon": "更多平台陸續支援",
+            "comingSoon": "更多平台敬請期待",
             "instagram": {
                 "name": "Instagram",
                 "summary": "影片 / 圖文 / 輪播圖",
@@ -352,7 +425,103 @@
                     "圖文",
                     "多影片"
                 ]
-            }
+            },
+            "vimeo": {
+                "name": "Vimeo",
+                "summary": "內容下載",
+                "features": [
+                    "內容下載"
+                ]
+            },
+            "dailymotion": {
+                "name": "Dailymotion",
+                "summary": "內容下載",
+                "features": [
+                    "內容下載"
+                ]
+            },
+            "streamable": {
+                "name": "Streamable",
+                "summary": "內容下載",
+                "features": [
+                    "內容下載"
+                ]
+            },
+            "reddit": {
+                "name": "Reddit",
+                "summary": "內容下載",
+                "features": [
+                    "內容下載"
+                ]
+            },
+            "newgrounds": {
+                "name": "Newgrounds",
+                "summary": "內容下載",
+                "features": [
+                    "內容下載"
+                ]
+            },
+            "tumblr": {
+                "name": "Tumblr",
+                "summary": "內容下載",
+                "features": [
+                    "內容下載"
+                ]
+            },
+            "pinterest": {
+                "name": "Pinterest",
+                "summary": "內容下載",
+                "features": [
+                    "內容下載"
+                ]
+            },
+            "vk": {
+                "name": "VK",
+                "summary": "內容下載",
+                "features": [
+                    "內容下載"
+                ]
+            },
+            "okru": {
+                "name": "OK.ru",
+                "summary": "內容下載",
+                "features": [
+                    "內容下載"
+                ]
+            },
+            "twitch": {
+                "name": "Twitch",
+                "summary": "內容下載",
+                "features": [
+                    "內容下載"
+                ]
+            },
+            "soundcloud": {
+                "name": "SoundCloud",
+                "summary": "內容下載",
+                "features": [
+                    "內容下載"
+                ]
+            },
+            "applePodcasts": {
+                "name": "Apple Podcasts",
+                "summary": "公開 Podcast 音訊 / 逐集播放與下載",
+                "features": [
+                    "公開音訊",
+                    "逐集播放",
+                    "下載"
+                ]
+            },
+            "kuaishou": { "name": "快手", "summary": "影片與圖文" },
+            "zhihu": { "name": "知乎", "summary": "影片內容" },
+            "generic": { "name": "網頁 / HLS", "summary": "支援的網頁影片與 HLS 串流" },
+            "bluesky": { "name": "Bluesky", "summary": "影片內容" },
+            "rumble": { "name": "Rumble", "summary": "影片內容" },
+            "snapchat": { "name": "Snapchat", "summary": "Spotlight 影片" },
+            "coub": { "name": "Coub", "summary": "短循環影片" },
+            "imgur": { "name": "Imgur", "summary": "圖片與影片內容" },
+            "odysee": { "name": "Odysee", "summary": "影片內容" },
+            "rutube": { "name": "Rutube", "summary": "影片與 HLS 串流" }
         },
         "linkFormats": {
             "title": "支援的連結格式",
@@ -379,6 +548,11 @@
             },
             "tip": "提示：複製分享連結即可，無需手動修改"
         }
+    },
+    "todayStats": {
+        "title": "解析統計",
+        "todayCountLabel": "今日",
+        "totalCountLabel": "累計"
     },
     "freeSupport": {
         "title": "永久免費服務",
@@ -493,6 +667,52 @@
                 "ブラウザ内で処理",
                 "Threads の動画と画像投稿をダウンロード",
                 "Weibo の動画・画像・混合メディア投稿をダウンロード"
+            ],
+            "es": [
+                "Extract MP3 audio from Bilibili videos",
+                "Download Douyin videos without watermark",
+                "Download Telegram public video posts",
+                "Download WeChat article videos",
+                "Download Instagram reels and posts",
+                "Download Instagram image posts",
+                "Extract audio from Instagram videos",
+                "Download Xiaohongshu image notes",
+                "Download Xiaohongshu videos",
+                "Extract audio from Xiaohongshu videos",
+                "Download TikTok videos without watermark",
+                "Download X videos",
+                "Extract audio from X videos",
+                "Auto-detect supported platforms",
+                "High-quality media downloads",
+                "Free online tool",
+                "No registration required",
+                "Support multiple media formats",
+                "Browser-based processing",
+                "Download Threads videos and image posts",
+                "Download Weibo videos and mixed-media posts"
+            ],
+            "ru": [
+                "Extract MP3 audio from Bilibili videos",
+                "Download Douyin videos without watermark",
+                "Download Telegram public video posts",
+                "Download WeChat article videos",
+                "Download Instagram reels and posts",
+                "Download Instagram image posts",
+                "Extract audio from Instagram videos",
+                "Download Xiaohongshu image notes",
+                "Download Xiaohongshu videos",
+                "Extract audio from Xiaohongshu videos",
+                "Download TikTok videos without watermark",
+                "Download X videos",
+                "Extract audio from X videos",
+                "Auto-detect supported platforms",
+                "High-quality media downloads",
+                "Free online tool",
+                "No registration required",
+                "Support multiple media formats",
+                "Browser-based processing",
+                "Download Threads videos and image posts",
+                "Download Weibo videos and mixed-media posts"
             ]
         },
         "howTo": {
@@ -500,7 +720,9 @@
                 "en": "How to download content from Bilibili, Douyin, Telegram, Threads, WeChat, Weibo, Niconico, Instagram, Xiaohongshu, TikTok, and X",
                 "zh": "如何下载哔哩哔哩、抖音、Telegram、Threads、微信公众号、微博、Niconico、Instagram、小红书、TikTok 和 X 内容",
                 "zh-tw": "如何下載嗶哩嗶哩、抖音、Telegram、Threads、微信公眾號、微博、Niconico、Instagram、小紅書、TikTok 與 X 內容",
-                "ja": "Bilibili・Douyin・Telegram・Threads・WeChat・Weibo・Niconico・Instagram・Xiaohongshu・TikTok・X のコンテンツをダウンロードする方法"
+                "ja": "Bilibili・Douyin・Telegram・Threads・WeChat・Weibo・Niconico・Instagram・Xiaohongshu・TikTok・X のコンテンツをダウンロードする方法",
+                "es": "How to download content from Bilibili, Douyin, Telegram, Threads, WeChat, Weibo, Niconico, Instagram, Xiaohongshu, TikTok, and X",
+                "ru": "How to download content from Bilibili, Douyin, Telegram, Threads, WeChat, Weibo, Niconico, Instagram, Xiaohongshu, TikTok, and X"
             },
             "steps": {
                 "en": [
@@ -574,6 +796,42 @@
                         "name": "ダウンロード",
                         "text": "動画・音声・画像のダウンロード方法を選択してコンテンツを取得します"
                     }
+                ],
+                "es": [
+                    {
+                        "name": "Copy link",
+                        "text": "Copy the video, post, image-post, mixed-media post, or article link from Bilibili, Douyin, Telegram, Threads, WeChat, Weibo, Niconico, Instagram, Xiaohongshu, TikTok, or X"
+                    },
+                    {
+                        "name": "Paste link",
+                        "text": "Paste the link into the input field on our website"
+                    },
+                    {
+                        "name": "Auto-detect",
+                        "text": "The tool will automatically detect the platform (Bilibili/Douyin/Telegram/Threads/WeChat/Weibo/Niconico/Instagram/Xiaohongshu/TikTok/X)"
+                    },
+                    {
+                        "name": "Download",
+                        "text": "Choose video, audio, or image download options to get your media content"
+                    }
+                ],
+                "ru": [
+                    {
+                        "name": "Copy link",
+                        "text": "Copy the video, post, image-post, mixed-media post, or article link from Bilibili, Douyin, Telegram, Threads, WeChat, Weibo, Niconico, Instagram, Xiaohongshu, TikTok, or X"
+                    },
+                    {
+                        "name": "Paste link",
+                        "text": "Paste the link into the input field on our website"
+                    },
+                    {
+                        "name": "Auto-detect",
+                        "text": "The tool will automatically detect the platform (Bilibili/Douyin/Telegram/Threads/WeChat/Weibo/Niconico/Instagram/Xiaohongshu/TikTok/X)"
+                    },
+                    {
+                        "name": "Download",
+                        "text": "Choose video, audio, or image download options to get your media content"
+                    }
                 ]
             }
         }
@@ -581,20 +839,32 @@
     "result": {
         "title": "解析結果",
         "downloadVideo": "下載影片",
+        "browserDownloadVideo": "瀏覽器下載",
         "mergeDownloadVideo": "下載完整影片",
         "mergeDownloadVideoHint": "將先合併音訊與影片，再開始下載",
         "downloadAudio": "下載音訊",
+        "playVideo": "播放影片",
+        "playAudio": "播放音訊",
         "sharePlayLink": "分享播放",
         "sharePlayLinkCopied": "播放分享連結已複製",
+        "previewPlayerTitle": "線上預覽",
+        "previewPlayerClose": "關閉預覽",
         "sharePlayPlayerTitle": "分享影片播放",
         "sharePlayUnavailable": "此內容暫不支援直接播放，請使用下載按鈕。",
         "originDownloadVideo": "影片直鏈",
         "originDownloadAudio": "音訊直鏈",
         "totalParts": "共 {count} 個分P",
+        "showAllParts": "展開全部（剩餘 {count} 條）",
+        "collapseParts": "收起到前 {count} 條",
+        "loadMoreItems": "載入更多（+{count}）",
+        "shownItems": "已顯示 {shown}/{total}",
+        "collectionSearchPlaceholder": "搜尋標題...",
+        "collectionNoSearchResults": "找不到符合的合集影片",
         "articleVideoList": "文章影片",
         "articleVideoCount": "共 {count} 個影片",
         "articleVideoUntitled": "影片 {index}",
         "downloadImage": "下載圖片",
+        "downloadCover": "下載封面",
         "coverLabel": "封面",
         "imageIndexLabel": "圖片 #{index}",
         "imageAlt": "圖片 {index}",
@@ -639,6 +909,7 @@
         "emailInvalid": "信箱格式不正確",
         "emailRequired": "選填。如需我們回覆你，可留下信箱",
         "emailHint": "如果需要我們回覆，請留下信箱",
+        "diagnosticInfoHint": "提交時會附帶瀏覽器和系統資訊，便於定位問題。",
         "cancelButton": "取消",
         "submitButton": "提交反饋",
         "submittingButton": "提交中...",

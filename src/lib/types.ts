@@ -22,7 +22,19 @@ export const API_ERROR_CODES = [
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number]
 export type ApiErrorDetails = Record<string, unknown>
-export type VideoMediaAction = 'direct-download' | 'merge-then-download' | 'hide'
+export type VideoAudioMode = 'muxed' | 'separate' | 'pure_music' | 'not_applicable'
+export type ResultKind = 'video' | 'audio' | 'picker' | 'image'
+
+export interface PodcastEpisodeInfo {
+    id: string;
+    title: string;
+    cover?: string | null;
+    duration?: number;
+    releaseDate?: string;
+    downloadAudioUrl?: string | null;
+    originDownloadAudioUrl?: string | null;
+}
+export type VideoMediaAction = 'direct-download' | 'merge-then-download' | 'browser-hls-download' | 'hide'
 export type AudioMediaAction = 'direct-download' | 'extract-audio' | 'hide'
 
 export interface MediaActions {
@@ -40,6 +52,7 @@ export interface PageInfo {
     duration: number;
     downloadAudioUrl: string | null;
     downloadVideoUrl: string | null;
+    videoAudioMode?: VideoAudioMode;
 }
 
 export interface VideoQualityOption {
@@ -57,8 +70,17 @@ export interface EmbeddedVideoInfo {
     duration?: number;
     qualityOptions?: VideoQualityOption[];
     downloadVideoUrl?: string | null;
+    downloadAudioUrl?: string | null;
     originDownloadVideoUrl?: string | null;
+    originDownloadAudioUrl?: string | null;
+    videoAudioMode?: VideoAudioMode;
     mediaActions?: MediaActions;
+}
+
+export interface UnifiedParseResultImage {
+    index?: number;
+    url?: string | null;
+    downloadUrl?: string | null;
 }
 
 export interface UnifiedParseResult {
@@ -76,6 +98,7 @@ export interface UnifiedParseResult {
         downloadVideoUrl: string | null;
         originDownloadAudioUrl?: string | null;
         originDownloadVideoUrl: string | null;
+        videoAudioMode?: VideoAudioMode;
         mediaActions?: MediaActions;
         url: string;
         // 时长（秒）
@@ -83,12 +106,18 @@ export interface UnifiedParseResult {
         // 多P视频相关字段
         isMultiPart?: boolean;
         currentPage?: number;
+        currentItemId?: string;
         pages?: PageInfo[];
         // 小红书相关字段
         noteType?: 'video' | 'image' | 'audio';
-        images?: string[];
+        images?: Array<string | UnifiedParseResultImage>;
         // 微信公众号文章视频列表
         videos?: EmbeddedVideoInfo[];
+        // 结果类型（picker = 多集选择器，如 Apple Podcasts 节目页）
+        kind?: ResultKind;
+        // Apple Podcasts 单集列表
+        episodes?: PodcastEpisodeInfo[];
+        currentEpisodeId?: string;
     };
     error?: string;
     message?: string;
@@ -116,10 +145,22 @@ export type Platform =
     | 'bili'
     | 'bilibili'
     | 'bilibili_tv'
+    | 'dailymotion'
     | 'douyin'
+    | 'kuaishou'
+    | 'newgrounds'
+    | 'okru'
+    | 'pinterest'
+    | 'reddit'
+    | 'soundcloud'
+    | 'streamable'
+    | 'twitch'
+    | 'tumblr'
     | 'youtube'
     | 'telegram'
     | 'threads'
+    | 'vk'
+    | 'vimeo'
     | 'wechat'
     | 'nico'
     | 'niconico'
@@ -130,4 +171,5 @@ export type Platform =
     | 'ins'
     | 'x'
     | 'twitter'
+    | 'apple_podcasts'
     | 'unknown';

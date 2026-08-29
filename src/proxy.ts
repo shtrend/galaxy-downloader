@@ -84,9 +84,11 @@ export function proxy(request: NextRequest) {
         locales: i18n.locales,
         defaultLocale: i18n.defaultLocale,
     })
-    request.nextUrl.pathname = `/${locale}${pathname}`
+    request.nextUrl.pathname = pathname === '/'
+        ? `/${locale}`
+        : `/${locale}${pathname}`
 
-    const response = NextResponse.redirect(request.nextUrl)
+    const response = NextResponse.redirect(request.nextUrl, 308)
     appendVaryHeader(response.headers, [...LOCALE_REDIRECT_VARY_HEADERS])
 
     // 设置 Cookie 记住用户语言偏好（仅在真实用户请求且非已有 cookie 时设置）
@@ -107,6 +109,6 @@ export default proxy
 export const config = {
     matcher: [
         // 仅匹配“无 locale 前缀”的页面请求，减少中间件对已本地化路由的额外开销
-        '/((?!api|_next/static|_next/image|favicon.ico|.*\\.|(?:zh|zh-tw|en|ja)(?:/|$)).*)',
+        '/((?!api|_next/static|_next/image|favicon.ico|.*\\.|(?:zh|zh-tw|en|ja|es|ru)(?:/|$)).*)',
     ],
 } 

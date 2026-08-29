@@ -23,7 +23,7 @@ import { MessageSquare, Loader2, CheckCircle2 } from 'lucide-react'
 import { toast } from '@/lib/deferred-toast'
 import { useDictionary } from '@/i18n/client'
 import type { FeedbackType } from '@/lib/feedback-config'
-import { submitFeedback, validateContent, validateEmail } from '@/lib/feedback'
+import { collectFeedbackClientMetadata, submitFeedback, validateContent, validateEmail } from '@/lib/feedback'
 import { FEEDBACK_CONFIG } from '@/lib/feedback-config'
 import { cn } from '@/lib/utils'
 import { isApiRequestError, resolveApiErrorMessageWithFallback } from '@/lib/api-errors'
@@ -31,6 +31,7 @@ import { isApiRequestError, resolveApiErrorMessageWithFallback } from '@/lib/api
 interface FeedbackDialogProps {
     triggerClassName?: string
     triggerIconOnly?: boolean
+    triggerLabel?: string
     defaultOpen?: boolean
     onTriggerClick?: () => void
 }
@@ -38,11 +39,13 @@ interface FeedbackDialogProps {
 export function FeedbackDialog({
     triggerClassName,
     triggerIconOnly = false,
+    triggerLabel: triggerLabelOverride,
     defaultOpen = false,
     onTriggerClick,
 }: FeedbackDialogProps) {
     const dict = useDictionary()
     const feedback = dict.feedback
+    const triggerLabel = triggerLabelOverride ?? feedback.triggerButton
     const [open, setOpen] = useState(defaultOpen)
     const [feedbackType, setFeedbackType] = useState<FeedbackType>('bug')
     const [content, setContent] = useState('')
@@ -96,7 +99,8 @@ export function FeedbackDialog({
             await submitFeedback({
                 type: feedbackType,
                 content: content.trim(),
-                email: email.trim(),
+                contact: email.trim(),
+                metadata: collectFeedbackClientMetadata(),
             })
 
             setSubmitStatus('success')
@@ -228,6 +232,10 @@ export function FeedbackDialog({
                 )}
             </div>
 
+            <p className="text-xs text-muted-foreground">
+                {feedback.diagnosticInfoHint}
+            </p>
+
             {/* 按钮 */}
             <div className="flex justify-end gap-2 pt-4">
                 <Button
@@ -262,13 +270,13 @@ export function FeedbackDialog({
                     size={triggerIconOnly ? 'icon' : 'sm'}
                     className={cn('text-sm', triggerClassName)}
                     onClick={onTriggerClick}
-                    aria-label={feedback.triggerButton}
+                    aria-label={triggerLabel}
                 >
                     <MessageSquare className={cn('h-4 w-4', !triggerIconOnly && 'mr-1')} />
                     {triggerIconOnly ? (
-                        <span className="sr-only">{feedback.triggerButton}</span>
+                        <span className="sr-only">{triggerLabel}</span>
                     ) : (
-                        feedback.triggerButton
+                        triggerLabel
                     )}
                 </Button>
             </DialogTrigger>

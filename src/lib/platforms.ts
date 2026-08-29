@@ -3,10 +3,22 @@ import type { Dictionary } from '@/lib/i18n/types'
 export type CanonicalPlatform =
     | 'bilibili'
     | 'bilibili_tv'
+    | 'dailymotion'
     | 'douyin'
+    | 'kuaishou'
+    | 'newgrounds'
+    | 'okru'
+    | 'pinterest'
+    | 'reddit'
+    | 'soundcloud'
+    | 'streamable'
+    | 'twitch'
+    | 'tumblr'
     | 'youtube'
     | 'telegram'
     | 'threads'
+    | 'vk'
+    | 'vimeo'
     | 'wechat'
     | 'niconico'
     | 'weibo'
@@ -14,16 +26,30 @@ export type CanonicalPlatform =
     | 'tiktok'
     | 'instagram'
     | 'x'
+    | 'apple_podcasts'
+    | 'generic'
     | 'unknown'
 
 const PLATFORM_ALIASES: Record<string, CanonicalPlatform> = {
     bili: 'bilibili',
     bilibili: 'bilibili',
     bilibili_tv: 'bilibili_tv',
+    dailymotion: 'dailymotion',
     douyin: 'douyin',
+    kuaishou: 'kuaishou',
+    newgrounds: 'newgrounds',
+    okru: 'okru',
+    pinterest: 'pinterest',
+    reddit: 'reddit',
+    soundcloud: 'soundcloud',
+    streamable: 'streamable',
+    twitch: 'twitch',
+    tumblr: 'tumblr',
     youtube: 'youtube',
     telegram: 'telegram',
     threads: 'threads',
+    vk: 'vk',
+    vimeo: 'vimeo',
     wechat: 'wechat',
     niconico: 'niconico',
     nico: 'niconico',
@@ -34,7 +60,9 @@ const PLATFORM_ALIASES: Record<string, CanonicalPlatform> = {
     ins: 'instagram',
     x: 'x',
     twitter: 'x',
+    generic: 'generic',
     unknown: 'unknown',
+    apple_podcasts: 'apple_podcasts',
 }
 
 const AUDIO_EXTRACTION_PLATFORMS = new Set<CanonicalPlatform>([
@@ -64,14 +92,38 @@ export function getPlatformLabel(
             return dict.history.platforms.bilibili
         case 'bilibili_tv':
             return dict.history.platforms.bilibiliTv
+        case 'dailymotion':
+            return dict.history.platforms.dailymotion
         case 'douyin':
             return dict.history.platforms.douyin
+        case 'kuaishou':
+            return dict.history.platforms.kuaishou
+        case 'newgrounds':
+            return dict.history.platforms.newgrounds
+        case 'okru':
+            return dict.history.platforms.okru
+        case 'pinterest':
+            return dict.history.platforms.pinterest
+        case 'reddit':
+            return dict.history.platforms.reddit
+        case 'soundcloud':
+            return dict.history.platforms.soundcloud
+        case 'streamable':
+            return dict.history.platforms.streamable
+        case 'twitch':
+            return dict.history.platforms.twitch
+        case 'tumblr':
+            return dict.history.platforms.tumblr
         case 'youtube':
             return dict.history.platforms.youtube
         case 'telegram':
             return dict.history.platforms.telegram
         case 'threads':
             return dict.history.platforms.threads
+        case 'vk':
+            return dict.history.platforms.vk
+        case 'vimeo':
+            return dict.history.platforms.vimeo
         case 'wechat':
             return dict.history.platforms.wechat
         case 'niconico':
@@ -86,6 +138,10 @@ export function getPlatformLabel(
             return dict.history.platforms.instagram
         case 'x':
             return dict.history.platforms.x
+        case 'apple_podcasts':
+            return 'Apple Podcasts'
+        case 'generic':
+            return dict.history.platforms.generic
         default:
             return dict.history.platforms.unknown
     }
@@ -95,77 +151,8 @@ export function getPlatformBadge(
     platform: string | null | undefined,
     dict: Pick<Dictionary, 'history'>
 ) {
-    switch (normalizePlatform(platform)) {
-        case 'bilibili':
-            return {
-                text: dict.history.platforms.bilibili,
-                className: 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300',
-            }
-        case 'bilibili_tv':
-            return {
-                text: dict.history.platforms.bilibiliTv,
-                className: 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300',
-            }
-        case 'douyin':
-            return {
-                text: dict.history.platforms.douyin,
-                className: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-            }
-        case 'youtube':
-            return {
-                text: dict.history.platforms.youtube,
-                className: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
-            }
-        case 'telegram':
-            return {
-                text: dict.history.platforms.telegram,
-                className: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300',
-            }
-        case 'threads':
-            return {
-                text: dict.history.platforms.threads,
-                className: 'bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-200',
-            }
-        case 'wechat':
-            return {
-                text: dict.history.platforms.wechat,
-                className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300',
-            }
-        case 'niconico':
-            return {
-                text: dict.history.platforms.niconico,
-                className: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300',
-            }
-        case 'weibo':
-            return {
-                text: dict.history.platforms.weibo,
-                className: 'bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300',
-            }
-        case 'xiaohongshu':
-            return {
-                text: dict.history.platforms.xiaohongshu,
-                className: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
-            }
-        case 'tiktok':
-            return {
-                text: dict.history.platforms.tiktok,
-                className: 'bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300',
-            }
-        case 'instagram':
-            return {
-                text: dict.history.platforms.instagram,
-                className: 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900 dark:text-fuchsia-300',
-            }
-        case 'x':
-            return {
-                text: dict.history.platforms.x,
-                className: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-            }
-        default:
-            return {
-                text: dict.history.platforms.unknown,
-                className: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-            }
+    return {
+        text: getPlatformLabel(platform, dict),
     }
 }
 

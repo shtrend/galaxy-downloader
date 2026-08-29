@@ -9,9 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { toast } from '@/lib/deferred-toast';
 import { DeferredAudioExtractDialog } from '@/components/deferred-audio-extract-dialog';
+import { useTopBarActions } from '@/components/layout/top-bar-actions';
 import type { AudioExtractTask } from '@/components/audio-tool/types';
-import { Loader2, Link2 } from 'lucide-react';
-import { AppTopBar } from '@/components/layout/app-top-bar';
+import type { MediaPreviewRequest } from '@/components/downloader/media-preview';
+import { buildResultPreviewForSelection } from '@/components/downloader/media-preview';
+import { ArrowUp, Loader2, X } from 'lucide-react';
 
 import type { DownloadRecord } from './download-history';
 import { useLocalStorageState } from '@/hooks/use-local-storage-state';
@@ -22,7 +24,7 @@ import { DOWNLOAD_HISTORY_MAX_COUNT, DOWNLOAD_HISTORY_STORAGE_KEY } from '@/lib/
 import { useDictionary } from '@/i18n/client';
 import { isApiRequestError, resolveApiErrorMessage } from '@/lib/api-errors';
 import { getPlatformLabel, normalizePlatform } from '@/lib/platforms';
-import { requestUnifiedParse } from '@/lib/unified-parse';
+import { UnifiedParseReloadError, requestUnifiedParse } from '@/lib/unified-parse';
 
 const UnifiedDownloaderLowerSections = dynamic(
     () => import('./unified-downloader-lower-sections').then((m) => m.UnifiedDownloaderLowerSections),
@@ -38,13 +40,8 @@ interface UnifiedDownloaderProps {
     footer?: ReactNode;
 }
 
-function resolveSharePlaybackUrl(result: UnifiedParseResult['data'] | null): string | null {
-    const sourceUrl = typeof result?.url === 'string' ? result.url.trim() : '';
-    if (!sourceUrl) {
-        return null;
-    }
-
-    return `/api/play?url=${encodeURIComponent(sourceUrl)}`;
+interface ActivePreview extends MediaPreviewRequest {
+    origin: 'share' | 'result' | 'user';
 }
 
 export function UnifiedDownloader({
@@ -56,16 +53,20 @@ export function UnifiedDownloader({
     footer,
 }: UnifiedDownloaderProps) {
     const dict = useDictionary()
+    const { setActions: setTopBarActions } = useTopBarActions()
     const searchParams = useSearchParams();
     const [url, setUrl] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isCoolingDown, setIsCoolingDown] = useState(false);
     const [error, setError] = useState('');
+    const lastParseTimeRef = useRef<number>(0);
     const [audioToolMounted, setAudioToolMounted] = useState(false);
     const [audioToolOpen, setAudioToolOpen] = useState(false);
     const [audioToolEntry, setAudioToolEntry] = useState<'toolbar' | 'result'>('toolbar');
     const [audioToolTask, setAudioToolTask] = useState<AudioExtractTask | null>(null);
     const [parseResult, setParseResult] = useState<UnifiedParseResult['data'] | null>(null);
-    const [sharePlaybackEnabled, setSharePlaybackEnabled] = useState(false);
+    const [activePreview, setActivePreview] = useState<ActivePreview | null>(null);
+    const [showBackToTop, setShowBackToTop] = useState(false);
     const historyRef = useRef<HTMLDivElement>(null);
     const urlInputRef = useRef<HTMLTextAreaElement>(null);
     const handledShareTaskRef = useRef<string | null>(null);
@@ -87,12 +88,12 @@ export function UnifiedDownloader({
         setDownloadHistory([]);
     };
 
-    const openToolbarAudioTool = () => {
+    const openToolbarAudioTool = useCallback(() => {
         setAudioToolMounted(true);
         setAudioToolEntry('toolbar');
         setAudioToolTask(null);
         setAudioToolOpen(true);
-    };
+    }, []);
 
     const openResultAudioExtract = (task: AudioExtractTask) => {
         setAudioToolMounted(true);
@@ -149,25 +150,42 @@ export function UnifiedDownloader({
                 onDismiss: dismiss,
             });
         }
+        return normalizedData;
     }, [addToHistory, canPrompt, dict, dismiss, promptInstall]);
 
     const closeParseResult = () => {
         setParseResult(null);
-        setSharePlaybackEnabled(false);
+        setActivePreview(null);
     };
+
+    const openResultPreview = useCallback((request: MediaPreviewRequest) => {
+        setActivePreview({
+            ...request,
+            autoplay: request.autoplay ?? false,
+            origin: request.origin ?? 'result',
+        });
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
-        setError('');
-        setParseResult(null);
-        setSharePlaybackEnabled(false);
 
         if (!url.trim()) {
             setError(dict.errors.emptyUrl);
-            setLoading(false);
             return;
         }
+
+        const now = Date.now();
+        if (now - lastParseTimeRef.current < 3000) {
+            return; // 冷却中禁止再次提交
+        }
+        lastParseTimeRef.current = now;
+        setIsCoolingDown(true);
+        setTimeout(() => setIsCoolingDown(false), 3000);
+
+        setLoading(true);
+        setError('');
+        setParseResult(null);
+        setActivePreview(null);
 
         try {
             // 使用统一接口处理所有平台，后端负责所有检测和处理
@@ -175,6 +193,11 @@ export function UnifiedDownloader({
 
             setUrl('');
         } catch (err) {
+            if (err instanceof UnifiedParseReloadError) {
+                setLoading(false);
+                return;
+            }
+
             if (isApiRequestError(err)) {
                 console.error('Unified parse request failed', {
                     code: err.code,
@@ -197,7 +220,7 @@ export function UnifiedDownloader({
     const handleRedownload = (url: string) => {
         setUrl(url);
         setParseResult(null);
-        setSharePlaybackEnabled(false);
+        setActivePreview(null);
         toast(dict.toast.linkFilledForRedownload, {
             description: dict.toast.clickToRedownloadDesc,
         });
@@ -206,16 +229,50 @@ export function UnifiedDownloader({
 
     const sharedPlaySourceUrl = searchParams.get('play')?.trim() ?? '';
     const sharedAutoplayRequested = searchParams.get('autoplay') === '1';
-    const sharePlaybackUrl = sharePlaybackEnabled ? resolveSharePlaybackUrl(parseResult) : null;
+    const sharedPlayItem = searchParams.get('item')?.trim() || undefined;
+    const sharedPlayType = searchParams.get('type') === 'audio'
+        ? 'audio'
+        : searchParams.get('type') === 'video'
+            ? 'video'
+            : undefined;
     const hasDownloadHistory = downloadHistory.length > 0;
     const showHistoryShortcut = historyHydrated && hasDownloadHistory;
+    const scrollToHistory = useCallback(() => {
+        if (historyRef.current) {
+            const top = historyRef.current.getBoundingClientRect().top + window.scrollY - 64;
+            window.scrollTo({ top, behavior: 'smooth' });
+        }
+    }, []);
+
+    useEffect(() => {
+        setTopBarActions({
+            showHistoryShortcut,
+            onHistoryClick: scrollToHistory,
+            showAudioTool: true,
+            onAudioToolClick: openToolbarAudioTool,
+        });
+
+        return () => {
+            setTopBarActions({});
+        };
+    }, [
+        openToolbarAudioTool,
+        scrollToHistory,
+        setTopBarActions,
+        showHistoryShortcut,
+    ]);
 
     useEffect(() => {
         if (!sharedPlaySourceUrl) {
             return;
         }
 
-        const taskKey = `${sharedPlaySourceUrl}::${sharedAutoplayRequested ? '1' : '0'}`;
+        const taskKey = [
+            sharedPlaySourceUrl,
+            sharedPlayItem ?? '',
+            sharedPlayType ?? '',
+            sharedAutoplayRequested ? '1' : '0',
+        ].join('::');
         if (handledShareTaskRef.current === taskKey) {
             return;
         }
@@ -228,12 +285,30 @@ export function UnifiedDownloader({
             setError('');
             setParseResult(null);
             setUrl(sharedPlaySourceUrl);
-            setSharePlaybackEnabled(sharedAutoplayRequested);
+            setActivePreview(null);
 
             try {
-                await handleUnifiedParse(sharedPlaySourceUrl);
+                const parsed = await handleUnifiedParse(sharedPlaySourceUrl);
+                if (cancelled) {
+                    return;
+                }
+
+                const sharePreview = buildResultPreviewForSelection(parsed, {
+                    item: sharedPlayItem,
+                    mediaType: sharedPlayType,
+                    autoplay: sharedAutoplayRequested,
+                });
+
+                setActivePreview(sharePreview ? {
+                    ...sharePreview,
+                    origin: 'share',
+                } : null);
             } catch (err) {
                 if (cancelled) {
+                    return;
+                }
+
+                if (err instanceof UnifiedParseReloadError) {
                     return;
                 }
 
@@ -248,7 +323,6 @@ export function UnifiedDownloader({
 
                 const errorMessage = resolveApiErrorMessage(err, dict);
                 setError(errorMessage);
-                setSharePlaybackEnabled(false);
                 toast.error(dict.errors.downloadFailed, {
                     description: errorMessage,
                 });
@@ -264,7 +338,14 @@ export function UnifiedDownloader({
         return () => {
             cancelled = true;
         };
-    }, [dict, handleUnifiedParse, sharedAutoplayRequested, sharedPlaySourceUrl]);
+    }, [
+        dict,
+        handleUnifiedParse,
+        sharedAutoplayRequested,
+        sharedPlayItem,
+        sharedPlaySourceUrl,
+        sharedPlayType,
+    ]);
 
     useEffect(() => {
         let idleId: number | null = null;
@@ -294,20 +375,33 @@ export function UnifiedDownloader({
         };
     }, []);
 
+    useEffect(() => {
+        let ticking = false;
+
+        const updateVisibility = () => {
+            const shouldShow = window.scrollY > 800;
+            setShowBackToTop((prev) => (prev === shouldShow ? prev : shouldShow));
+            ticking = false;
+        };
+
+        const handleScroll = () => {
+            if (ticking) {
+                return;
+            }
+            ticking = true;
+            window.requestAnimationFrame(updateVisibility);
+        };
+
+        handleScroll();
+        window.addEventListener('scroll', handleScroll, { passive: true });
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+        };
+    }, []);
+
     return (
         <div className="min-h-screen flex flex-col bg-background">
-            <AppTopBar
-                showHistoryShortcut={showHistoryShortcut}
-                onHistoryClick={() => {
-                    if (historyRef.current) {
-                        const top = historyRef.current.getBoundingClientRect().top + window.scrollY - 64;
-                        window.scrollTo({ top, behavior: 'smooth' });
-                    }
-                }}
-                showAudioTool
-                onAudioToolClick={openToolbarAudioTool}
-            />
-
             <DeferredAudioExtractDialog
                 mounted={audioToolMounted}
                 open={audioToolOpen}
@@ -336,41 +430,16 @@ export function UnifiedDownloader({
                         {/* 中栏：主要功能区域 */}
                         <div className="lg:col-span-2 flex flex-col gap-4">
                             <Card className="shrink-0">
-                                <CardHeader className="p-4">
+                                <CardHeader className="p-4 pb-2 space-y-1.5">
                                     <h1 className="text-2xl text-center font-semibold tracking-tight">
                                         {dict.unified.pageTitle}
                                     </h1>
-                                    <p className="text-xs text-foreground/70 text-center flex items-center justify-center gap-1.5 flex-wrap">
+                                    <p className="text-xs sm:text-[13px] leading-relaxed text-foreground/60 text-center break-words">
                                         {dict.unified.pageDescription}
                                     </p>
-                                    {dict.unified.exampleUrl && (
-                                        <div className="mx-auto flex max-w-full items-center justify-center">
-                                            <button
-                                                type="button"
-                                                className="inline-flex max-w-full items-center gap-1 rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-xs text-foreground/65 transition-colors hover:border-primary/35 hover:bg-muted/70 hover:text-foreground"
-                                                onClick={() => {
-                                                    setUrl(dict.unified.exampleUrl!);
-                                                    toast.success(dict.toast.linkFilled);
-                                                    window.requestAnimationFrame(() => {
-                                                        urlInputRef.current?.focus();
-                                                        const input = urlInputRef.current;
-                                                        if (input) {
-                                                            const valueLength = input.value.length;
-                                                            input.setSelectionRange(valueLength, valueLength);
-                                                        }
-                                                    });
-                                                }}
-                                            >
-                                                <Link2 className="h-3.5 w-3.5 shrink-0 text-foreground/45" />
-                                                <span className="shrink-0 text-foreground/45">{dict.unified.exampleLabel}</span>
-                                                <span className="truncate text-left">{dict.unified.exampleUrl}</span>
-                                            </button>
-                                        </div>
-                                    )}
-                                    {heroMeta}
                                 </CardHeader>
-                                <CardContent className="px-4 pb-4 pt-0">
-                                    <form onSubmit={handleSubmit} className="space-y-6">
+                                <CardContent className="px-4 pb-4 pt-1">
+                                    <form onSubmit={handleSubmit} className="space-y-4">
                                         <div className="space-y-2">
                                             <Textarea
                                                 id="url"
@@ -406,52 +475,35 @@ export function UnifiedDownloader({
                                                 <Button
                                                     type="submit"
                                                     className="flex-1 flex items-center justify-center gap-2"
-                                                    disabled={loading || !url.trim()}
+                                                    disabled={loading || isCoolingDown || !url.trim()}
                                                 >
                                                     {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                                                     {loading ? dict.form.downloading : dict.form.downloadButton}
                                                 </Button>
                                             </div>
                                         </div>
+
                                         {error && (
                                             <p className="text-sm text-destructive text-center">{error}</p>
                                         )}
+
+                                        <div className="pt-2 space-y-3">
+                                            <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-center text-xs text-amber-600 dark:text-amber-400/90 break-words">
+                                                {dict.page.copyrightBilibiliRestriction}
+                                            </div>
+                                            {heroMeta}
+                                        </div>
                                     </form>
                                 </CardContent>
                             </Card>
-
-                            {sharePlaybackEnabled && parseResult && (
-                                <Card className="shrink-0">
-                                    <CardHeader className="p-4 pb-2">
-                                        <h2 className="text-base font-semibold">{dict.result.sharePlayPlayerTitle}</h2>
-                                        <p className="text-xs text-muted-foreground line-clamp-1" title={parseResult.title}>
-                                            {parseResult.title}
-                                        </p>
-                                    </CardHeader>
-                                    <CardContent className="px-4 pb-4 pt-0">
-                                        {sharePlaybackUrl ? (
-                                            <video
-                                                src={sharePlaybackUrl}
-                                                controls
-                                                autoPlay
-                                                muted
-                                                playsInline
-                                                preload="metadata"
-                                                className="w-full max-h-[60vh] rounded-lg bg-black"
-                                            />
-                                        ) : (
-                                            <p className="text-sm text-muted-foreground">
-                                                {dict.result.sharePlayUnavailable}
-                                            </p>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            )}
 
                             <UnifiedDownloaderLowerSections
                                 parseResult={parseResult}
                                 onCloseParseResult={closeParseResult}
                                 onOpenExtractAudio={openResultAudioExtract}
+                                onRequestPreview={openResultPreview}
+                                onClearPreview={() => setActivePreview(null)}
+                                activePreview={activePreview}
                                 mobileAd={mobileAd}
                                 mobileGuides={mobileGuides}
                                 downloadHistory={downloadHistory}
@@ -473,6 +525,22 @@ export function UnifiedDownloader({
             </main>
 
             {footer}
+
+            <Button
+                type="button"
+                size="icon"
+                className={`fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-30 h-10 w-10 rounded-full shadow-md transition-all duration-300 ease-out ${
+                    showBackToTop
+                        ? 'pointer-events-auto opacity-100 translate-y-0 scale-100'
+                        : 'pointer-events-none opacity-0 translate-y-2 scale-95'
+                }`}
+                aria-label={dict.common.backToTop}
+                onClick={() => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+            >
+                <ArrowUp className="h-4 w-4" />
+            </Button>
         </div>
     );
 }

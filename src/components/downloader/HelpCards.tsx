@@ -76,22 +76,6 @@ export function HelpCards({ dict }: HelpCardsProps) {
                 </CardHeader>
                 <CardContent className="space-y-4 p-4">
                     <div>
-                        <p className="font-medium mb-2">{dict.guide.linkFormats.bilibili.title}</p>
-                        <div className="bg-muted p-3 rounded-md space-y-1 text-sm font-mono">
-                            {dict.guide.linkFormats.bilibili.examples.map((example, index) => (
-                                <p key={index}>{example}</p>
-                            ))}
-                        </div>
-                    </div>
-                    <div>
-                        <p className="font-medium mb-2">{dict.guide.linkFormats.douyin.title}</p>
-                        <div className="bg-muted p-3 rounded-md space-y-1 text-sm font-mono">
-                            {dict.guide.linkFormats.douyin.examples.map((example, index) => (
-                                <p key={index}>{example}</p>
-                            ))}
-                        </div>
-                    </div>
-                    <div>
                         <p className="font-medium mb-2">{dict.guide.linkFormats.telegram.title}</p>
                         <div className="bg-muted p-3 rounded-md space-y-1 text-sm font-mono">
                             {dict.guide.linkFormats.telegram.examples.map((example, index) => (

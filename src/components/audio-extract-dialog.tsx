@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useId, useMemo, useState, type ChangeEvent, type DragEvent } from 'react'
+import { useCallback, useEffect, useId, useState, type ChangeEvent, type DragEvent } from 'react'
 
 import { AlertCircle, CheckCircle2, Loader2, Music } from 'lucide-react'
 import * as Tabs from '@radix-ui/react-tabs'
@@ -23,7 +23,7 @@ import { useFFmpeg, type FFmpegStatus } from '@/hooks/use-ffmpeg'
 import { useDictionary } from '@/i18n/client'
 import { isApiRequestError, resolveApiErrorMessage } from '@/lib/api-errors'
 import { toast } from '@/lib/deferred-toast'
-import { requestUnifiedParse } from '@/lib/unified-parse'
+import { UnifiedParseReloadError, requestUnifiedParse } from '@/lib/unified-parse'
 import { cn, downloadFile, formatBytes, sanitizeFilename } from '@/lib/utils'
 
 interface AudioExtractDialogProps {
@@ -63,6 +63,14 @@ const SUPPORTED_AUDIO_TYPES = new Set([
 
 const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'mov', 'mkv', 'avi', 'mpeg', 'mpg'])
 const AUDIO_EXTENSIONS = new Set(['mp3', 'aac', 'wav', 'ogg', 'flac', 'm4a'])
+const PROCESSING_STATUSES = new Set<FFmpegStatus>([
+    'loading',
+    'downloading',
+    'converting',
+    'reading-video',
+    'reading-audio',
+    'merging',
+])
 
 function getFileExtension(file: File): string {
     const match = /\.([a-z0-9]+)$/i.exec(file.name)
@@ -174,17 +182,7 @@ export function AudioExtractDialog({
         ? `${autoExtractTask.action ?? ''}::${autoExtractTask.mediaActions?.video ?? ''}::${autoExtractTask.mediaActions?.audio ?? ''}::${autoExtractTask.audioUrl ?? ''}::${autoExtractTask.videoUrl ?? ''}::${autoExtractTask.sourceUrl ?? ''}::${autoExtractTask.title ?? ''}`
         : null
 
-    const ffmpegProcessing = useMemo(
-        () => ([
-            'loading',
-            'downloading',
-            'converting',
-            'reading-video',
-            'reading-audio',
-            'merging',
-        ] as FFmpegStatus[]).includes(status),
-        [status]
-    )
+    const ffmpegProcessing = PROCESSING_STATUSES.has(status)
     const showProgress = ffmpegProcessing
     const isBusy = stage === 'parsing' || stage === 'preparing-merge' || stage === 'direct-downloading' || stage === 'reading-file' || ffmpegProcessing
     const toolbarDescription = mode === 'merge'
@@ -292,7 +290,7 @@ export function AudioExtractDialog({
         })
     }, [dict.errors.downloadError, dict.errors.fileEmpty, dict.history.unknownTitle])
 
-    const statusText = useMemo(() => {
+    const statusText = (() => {
         if (stage === 'parsing') {
             return dict.audioTool.statusParsing
         }
@@ -365,35 +363,7 @@ export function AudioExtractDialog({
         return (entry === 'result' && resultTaskAction === 'merge-video') || mode === 'merge'
             ? dict.audioTool.statusMergeIdle
             : dict.audioTool.statusIdle
-    }, [
-        entry,
-        dict,
-        error,
-        errorMessage,
-        mergeAudioFile,
-        mergeVideoFile,
-        mode,
-        progress,
-        progressInfo?.loaded,
-        progressInfo?.total,
-        resultTaskAction,
-        selectedFile,
-        stage,
-        status,
-    ])
-
-    useEffect(() => {
-        if (status === 'completed') {
-            setStage('completed')
-        }
-
-        if (status === 'error') {
-            setStage('error')
-            if (error) {
-                setErrorMessage(error)
-            }
-        }
-    }, [error, status])
+    })()
 
     useEffect(() => {
         if (!open) {
@@ -540,6 +510,11 @@ export function AudioExtractDialog({
 
             throw new Error(dict.audioTool.noAudioSource)
         } catch (err) {
+            if (err instanceof UnifiedParseReloadError) {
+                setStage('idle')
+                return
+            }
+
             if (isApiRequestError(err)) {
                 console.error('Audio tool auto parse failed', {
                     code: err.code,
@@ -741,7 +716,11 @@ export function AudioExtractDialog({
             return
         }
 
-        void runAutoExtractTask(autoExtractTask)
+        const timer = window.setTimeout(() => {
+            void runAutoExtractTask(autoExtractTask)
+        }, 0)
+
+        return () => window.clearTimeout(timer)
     }, [autoExtractTask, autoTaskKey, entry, ffmpegProcessing, open, runAutoExtractTask, stage, status])
 
     const handleDialogOpenChange = useCallback((nextOpen: boolean) => {

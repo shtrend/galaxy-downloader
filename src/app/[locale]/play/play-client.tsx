@@ -4,34 +4,20 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Loader2, ExternalLink } from 'lucide-react'
+import { HlsVideoPlayer } from '@/components/hls-video-player'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { AppTopBar } from '@/components/layout/app-top-bar'
 import { PlatformBadge } from '@/components/platform-badge'
 import { ViewportSideRailAd } from '@/components/ads/viewport-side-rail-ad'
+import { buildMediaPreviewUrl, buildResultPreviewForSelection } from '@/components/downloader/media-preview'
 import { useAppLocale, useDictionary } from '@/i18n/client'
 import { isApiRequestError, resolveApiErrorMessage } from '@/lib/api-errors'
-import { requestUnifiedParse } from '@/lib/unified-parse'
+import { isHlsPlaylistUrl } from '@/lib/hls-playback'
+import { UnifiedParseReloadError, requestUnifiedParse } from '@/lib/unified-parse'
 import type { UnifiedParseResult } from '@/lib/types'
 import { normalizePlatform } from '@/lib/platforms'
-import { shouldShowVideoDownloadButton } from '@/components/downloader/result-card-visibility'
 
 type ParsedResultData = NonNullable<UnifiedParseResult['data']>
-
-function canPlayResult(result: ParsedResultData): boolean {
-    const hasPlayableCandidate = [
-        result.originDownloadVideoUrl,
-        result.downloadVideoUrl,
-        ...(result.pages ?? []).map((page) => page.downloadVideoUrl),
-        ...(result.videos ?? []).flatMap((video) => [video.originDownloadVideoUrl, video.downloadVideoUrl]),
-    ].some((url) => shouldShowVideoDownloadButton(url))
-
-    if (result.mediaActions?.video === 'direct-download' || result.mediaActions?.video === 'merge-then-download') {
-        return true
-    }
-
-    return hasPlayableCandidate
-}
 
 export function PlayPageClient() {
     const dict = useDictionary()
@@ -40,6 +26,8 @@ export function PlayPageClient() {
 
     const sourceUrl = (searchParams.get('url') || searchParams.get('play') || '').trim()
     const autoplay = searchParams.get('autoplay') === '1'
+    const requestedItem = searchParams.get('item')?.trim() || undefined
+    const requestedMediaType = searchParams.get('type') === 'audio' ? 'audio' : 'video'
 
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
@@ -49,12 +37,7 @@ export function PlayPageClient() {
         let cancelled = false
 
         if (!sourceUrl) {
-            setParseResult(null)
-            setLoading(false)
-            setError(dict.errors.emptyUrl)
-            return () => {
-                cancelled = true
-            }
+            return
         }
 
         const loadSharedResult = async () => {
@@ -74,6 +57,10 @@ export function PlayPageClient() {
                 })
             } catch (err) {
                 if (cancelled) {
+                    return
+                }
+
+                if (err instanceof UnifiedParseReloadError) {
                     return
                 }
 
@@ -101,21 +88,48 @@ export function PlayPageClient() {
         }
     }, [dict, sourceUrl])
 
-    const canonicalSourceUrl = (parseResult?.url || sourceUrl).trim()
-    const playbackUrl = useMemo(() => {
-        if (!canonicalSourceUrl) {
+    const visibleParseResult = sourceUrl ? parseResult : null
+    const displayError = sourceUrl ? error : dict.errors.emptyUrl
+    const canonicalSourceUrl = (visibleParseResult?.url || sourceUrl).trim()
+    const selectedPreview = useMemo(() => visibleParseResult
+        ? buildResultPreviewForSelection(visibleParseResult, {
+              item: requestedItem,
+              mediaType: requestedMediaType,
+              autoplay,
+          })
+        : null, [autoplay, requestedItem, requestedMediaType, visibleParseResult])
+    const hlsPlaybackUrl = useMemo(() => {
+        if (selectedPreview?.mediaType !== 'video' || selectedPreview.item) {
             return null
         }
 
-        return `/api/play?url=${encodeURIComponent(canonicalSourceUrl)}`
-    }, [canonicalSourceUrl])
+        const originPlaylistUrl = visibleParseResult?.originDownloadVideoUrl?.trim()
+        const workerPlaylistUrl = visibleParseResult?.downloadVideoUrl?.trim()
+        const isHlsVideo = visibleParseResult?.mediaActions?.video === 'browser-hls-download'
+            || isHlsPlaylistUrl(originPlaylistUrl)
+        if (!workerPlaylistUrl || !isHlsVideo) {
+            return null
+        }
 
-    const canPlay = parseResult ? canPlayResult(parseResult) : false
+        return workerPlaylistUrl
+    }, [selectedPreview, visibleParseResult])
+    const playbackUrl = useMemo(() => {
+        if (hlsPlaybackUrl) {
+            return hlsPlaybackUrl
+        }
+
+        if (!selectedPreview) {
+            return null
+        }
+
+        return buildMediaPreviewUrl(selectedPreview)
+    }, [hlsPlaybackUrl, selectedPreview])
+
+    const canPlay = Boolean(selectedPreview)
+    const displayTitle = selectedPreview?.title || visibleParseResult?.title || ''
 
     return (
         <div className="min-h-screen flex flex-col bg-background">
-            <AppTopBar showHomeButton homeHref={`/${locale}`} />
-
             <div className=" flex-1 sm:p-4 md:p-4 pt-2 ">
                 <section className="w-full max-w-7xl mx-auto  bg-black">
                     {loading ? (
@@ -126,15 +140,34 @@ export function PlayPageClient() {
                             </div>
                         </div>
                     ) : (canPlay && playbackUrl) ? (
-                        <video
-                            src={playbackUrl}
-                            controls
-                            autoPlay={autoplay}
-                            playsInline
-                            preload="metadata"
-                            className="block w-full max-h-[74dvh] md:max-h-[72vh] lg:max-h-[68vh] bg-black"
-                        />
-                    ) : parseResult ? (
+                        selectedPreview?.mediaType === 'audio' ? (
+                            <audio
+                                src={playbackUrl}
+                                controls
+                                autoPlay={autoplay}
+                                preload="metadata"
+                                className="block w-full"
+                            />
+                        ) : hlsPlaybackUrl ? (
+                            <HlsVideoPlayer
+                                src={playbackUrl}
+                                controls
+                                autoPlay={autoplay}
+                                playsInline
+                                preload="metadata"
+                                className="block w-full min-h-[320px] max-h-[74dvh] md:max-h-[72vh] lg:max-h-[68vh] bg-black"
+                            />
+                        ) : (
+                            <video
+                                src={playbackUrl}
+                                controls
+                                autoPlay={autoplay}
+                                playsInline
+                                preload="metadata"
+                                className="block w-full min-h-[320px] max-h-[74dvh] md:max-h-[72vh] lg:max-h-[68vh] bg-black"
+                            />
+                        )
+                    ) : visibleParseResult ? (
                         <div className="aspect-video max-h-[74dvh] md:max-h-[72vh] lg:max-h-[68vh] flex items-center justify-center px-4 text-sm text-muted-foreground bg-black">
                             {dict.result.sharePlayUnavailable}
                         </div>
@@ -143,10 +176,10 @@ export function PlayPageClient() {
 
                 <section className="w-full">
                     <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-5 py-3 space-y-3">
-                        {!loading && error && (
+                        {!loading && displayError && (
                             <Card>
                                 <CardContent className="p-6 space-y-4">
-                                    <p className="text-sm text-destructive">{error}</p>
+                                    <p className="text-sm text-destructive">{displayError}</p>
                                     <Button asChild size="sm" variant="outline">
                                         <Link href={`/${locale}`}>{dict.common.home}</Link>
                                     </Button>
@@ -154,11 +187,11 @@ export function PlayPageClient() {
                             </Card>
                         )}
 
-                        {!loading && !error && parseResult && (
+                        {!loading && !displayError && visibleParseResult && (
                             <div className="w-full space-y-1.5">
-                                <h2 className="text-base sm:text-lg leading-snug font-semibold wrap-break-word" title={parseResult.title}>{parseResult.title}</h2>
+                                <h2 className="text-base sm:text-lg leading-snug font-semibold wrap-break-word" title={displayTitle}>{displayTitle}</h2>
                                 <div className="flex flex-wrap items-center gap-2 text-[11px] sm:text-xs text-muted-foreground">
-                                    <PlatformBadge platform={parseResult.platform} />
+                                    <PlatformBadge platform={visibleParseResult.platform} />
                                     {canonicalSourceUrl ? (
                                         <a
                                             href={canonicalSourceUrl}
