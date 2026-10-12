@@ -1,20 +1,34 @@
 # 通用媒体下载器
 
-这是一个基于 [vinext](https://github.com/cloudflare/vinext) 运行的 Next.js App Router 兼容项目，支持从 Bilibili、抖音、Instagram、小红书、TikTok、X、Telegram、Threads、微信公众号、微博、Niconico、Vimeo、Dailymotion、Streamable、Reddit、Newgrounds、Tumblr、Pinterest、VK、OK.ru、Twitch、SoundCloud 等平台下载媒体内容。
+这是一个基于 [vinext](https://github.com/cloudflare/vinext) 运行的 Next.js App Router 兼容项目，支持从 Bilibili、抖音、Instagram、小红书、TikTok、X、Telegram、Threads、微信公众号、微博、Niconico、Vimeo、Dailymotion、Streamable、Reddit、Newgrounds、Tumblr、Pinterest、VK、OK.ru、Twitch、SoundCloud、Apple Podcasts 等平台下载媒体内容。
+
+## 许可证
+
+本项目原创材料采用自定义的 **galaxy-downloader 个人使用及免费公开服务许可证**，完整条款见 [LICENSE](./LICENSE)。这是源码可用许可证，包含商业使用限制，不属于 OSI 定义的开源许可证。
+
+- 允许个人非商业使用、学习、研究及二次开发。
+- 允许个人免费向公众提供非商业下载服务，包括服务运行所必需的浏览器客户端文件传输。
+- 修改后的源码无需公开；除上述免费公开服务外，修改版仅限本人使用，不得向他人发布修改版的源码、安装包、容器镜像或独立部署包。
+- 收费、广告变现、付费会员、商业产品集成，以及用于企业经营或内部业务等商业用途，均须事先取得有权授权的版权人的明确书面授权。商业使用依照单独授权条款进行。
+- 保留已有的版权及许可声明。第三方材料遵循各自许可证，不受本项目非商业限制的重新约束。
+
+特别说明：`@ffmpeg/core 0.12.9` 声明采用 `GPL-2.0-or-later`；`@ffmpeg/ffmpeg` 和 `@ffmpeg/util` 采用 MIT 许可证。提供这些组件或其修改版时，仍需履行适用的许可、声明和对应源码提供义务。“修改后的源码无需公开”不豁免第三方许可证的要求。参见 [ffmpeg.wasm 官方许可说明](https://ffmpegwasm.netlify.app/docs/faq/#what-is-the-license-of-ffmpegwasm)。
 
 ## 功能特点
 
+- 🖥️ 顶部“下载桌面版”入口，展示客户端优势、按系统下载最新正式版及安装说明
 - 🎵 支持 Bilibili 视频/音频下载
 - 🎬 支持抖音无水印视频下载及音频提取
 - 📱 支持 Instagram Reels、帖子和图文内容下载
 - 📷 支持小红书视频笔记和图文笔记下载
 - 🎞️ 支持 TikTok 视频下载
 - 🐦 支持 X 视频下载
+- 🎙️ 支持 Apple Podcasts 公开播客音频，节目页可搜索、选择单集并逐集播放、下载和分享播放链接
 - 🌐 支持 Vimeo、Dailymotion、Streamable、Reddit、Newgrounds、Tumblr、Pinterest、VK、OK.ru、Twitch、SoundCloud 等平台内容解析与下载
 - 🔍 自动识别平台链接
 - 🎨 现代化的用户界面设计
 - 💾 本地下载历史记录
-- 🌍 多语言支持（简体中文、繁体中文、英文、日文）
+- 🌍 多语言支持（简体中文、繁体中文、英文、日文、西班牙文、俄文）
 
 ## 开始使用
 
@@ -25,6 +39,8 @@ pnpm dev
 ```
 
 在浏览器中打开 [http://localhost:3010](http://localhost:3010) 即可看到应用界面。
+
+桌面客户端下载入口的本地验证记录见 [docs/test-links.md](./docs/test-links.md)。
 
 ## 使用方法
 
@@ -47,6 +63,8 @@ pnpm dev
 - **OK.ru**: `https://ok.ru/video/14627121662690`
 - **Twitch**: `https://m.twitch.tv/ninja/clip/SuaveNeighborlySrirachaHeyGirl-1J8kzeLFWxdUBZ4C`
 - **SoundCloud**: `https://soundcloud.com/forss/flickermood`
+- **Apple Podcasts 节目主页**: `https://podcasts.apple.com/tw/podcast/%E9%8C%A2%E5%BE%80%E5%93%AA%E8%A3%A1%E6%B5%81/id1888765575`
+- **Apple Podcasts 单集**: 节目链接带 `?i=<episodeId>`，仅展示该集的音频播放与下载
 
 ## 技术栈
 
@@ -86,11 +104,13 @@ pnpm dev
 - **OK.ru**: 内容下载
 - **Twitch**: 内容下载
 - **SoundCloud**: 内容下载
+- **Apple Podcasts**: 公开音频；节目主页支持搜索、选择和逐集下载，带 `?i=` 的链接直接展示单集
 
 说明：
 
 - 音频提取目前以浏览器端处理为主，受浏览器性能和文件大小影响
 - 图文内容支持按平台返回结果分别下载或打包下载
+- Apple Podcasts 仅支持公开可访问的音频，不绕过付费、订阅、地区限制、登录或 DRM；不提供全集压缩包或音频提取操作
 
 ## 本地开发
 
